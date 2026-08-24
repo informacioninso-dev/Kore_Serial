@@ -1,3 +1,3 @@
-<span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium {% if unit.status == 'COMPLETED' %}border-emerald-200 bg-emerald-50 text-emerald-700{% elif unit.status == 'ARCHIVED' %}border-red-200 bg-red-50 text-red-700{% elif unit.status == 'IN_PROCESS' %}border-amber-200 bg-amber-50 text-amber-700{% else %}border-gray-200 bg-gray-50 text-gray-700{% endif %}">
+<span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium {% if unit.status == 'COMPLETED' or unit.status == 'RELEASED' %}border-emerald-200 bg-emerald-50 text-emerald-700{% elif unit.status == 'ARCHIVED' %}border-gray-200 bg-gray-50 text-gray-700{% elif unit.status == 'QUALITY_HOLD' or unit.status == 'IN_PROCESS' %}border-amber-200 bg-amber-50 text-amber-700{% elif unit.status == 'REWORK' %}border-red-200 bg-red-50 text-red-700{% else %}border-gray-200 bg-gray-50 text-gray-700{% endif %}">
   {{ unit.get_status_display }}
 </span>

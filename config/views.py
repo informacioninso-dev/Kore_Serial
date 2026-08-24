@@ -1,9 +1,9 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import TemplateView
+from django.views.generic import RedirectView, TemplateView
 
 
-class DashboardView(LoginRequiredMixin, TemplateView):
-    template_name = "assembly/dashboard.html"
+class DashboardView(LoginRequiredMixin, RedirectView):
+    pattern_name = "assembly:index"
 
 
 class PublicDashboardView(TemplateView):

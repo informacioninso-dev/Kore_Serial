@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Secuencia | Kore Serial{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-6xl px-4 py-3">
+  {% include "assembly/_nav.html" with nav_key=nav_key %}
+
+  <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Item de secuencia</p>
+      <h1 class="mt-1 text-xl font-semibold text-gray-900">{{ item.line.code }} #{{ item.sequence }}</h1>
+      <p class="mt-1 text-sm text-gray-600">{{ item.unit.serial_number }} / {{ item.route.code }}-{{ item.route.revision }}</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a href="{{ unit_detail_url }}" class="inline-flex h-9 items-center rounded-lg border px-4 text-sm font-medium text-gray-700 hover:bg-gray-50">Expediente</a>
+      <a href="{{ plan_url }}" class="inline-flex h-9 items-center rounded-lg border px-4 text-sm font-medium text-gray-700 hover:bg-gray-50">Plan</a>
+      <a href="{{ edit_url }}" class="inline-flex h-9 items-center rounded-lg border px-4 text-sm font-medium text-gray-700 hover:bg-gray-50">Editar</a>
+      <a href="{{ back_url }}" class="inline-flex h-9 items-center rounded-lg border px-4 text-sm font-medium text-gray-700 hover:bg-gray-50">Volver</a>
+    </div>
+  </div>
+
+  <section class="mb-4 grid gap-3 md:grid-cols-5">
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Unidad</p>
+      <p class="mt-2 text-sm font-semibold text-gray-900">{{ item.unit.serial_number }}</p>
+      <p class="text-xs text-gray-600">{{ item.unit.get_status_display }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Plan</p>
+      <p class="mt-2 text-sm font-semibold text-gray-900">{{ item.production_plan.code }}</p>
+      <p class="text-xs text-gray-600">{{ item.production_plan.shift }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Linea</p>
+      <p class="mt-2 text-sm font-semibold text-gray-900">{{ item.line.code }}</p>
+      <p class="text-xs text-gray-600">{{ item.line.name }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Proxima estacion</p>
+      <p class="mt-2 text-sm font-semibold text-gray-900">{% if next_step %}{{ next_step.station.code }}{% else %}Completa{% endif %}</p>
+      <p class="text-xs text-gray-600">{% if next_step %}{{ next_step.name }}{% else %}Sin paso pendiente{% endif %}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Estado</p>
+      <p class="mt-2 text-sm font-semibold text-gray-900">{{ item.get_status_display }}</p>
+      <p class="text-xs text-gray-600">{{ item.get_priority_display }}</p>
+    </div>
+  </section>
+
+  {% if available_actions %}
+    <form method="post" class="mb-4 rounded-lg border bg-white p-4">
+      {% csrf_token %}
+      {% if action_form.non_field_errors %}
+        <div class="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{{ action_form.non_field_errors }}</div>
+      {% endif %}
+      <div class="grid gap-3 md:grid-cols-2">
+        <label class="text-xs font-medium text-gray-700">
+          Nueva secuencia
+          {{ action_form.new_sequence }}
+          {% if action_form.new_sequence.errors %}<span class="mt-1 block text-xs text-red-700">{{ action_form.new_sequence.errors|join:", " }}</span>{% endif %}
+        </label>
+        <label class="text-xs font-medium text-gray-700 md:col-span-2">
+          Motivo
+          {{ action_form.notes }}
+          {% if action_form.notes.errors %}<span class="mt-1 block text-xs text-red-700">{{ action_form.notes.errors|join:", " }}</span>{% endif %}
+        </label>
+      </div>
+      <div class="mt-4 flex flex-wrap gap-2">
+        {% if "move" in available_actions %}
+          <button type="submit" name="action" value="move" class="h-9 rounded-lg bg-orange-600 px-4 text-sm font-semibold text-white hover:bg-orange-700">Mover</button>
+        {% endif %}
+        {% if "ready" in available_actions %}
+          <button type="submit" name="action" value="ready" class="h-9 rounded-lg border border-emerald-300 bg-white px-4 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">Marcar lista</button>
+        {% endif %}
+        {% if "hold" in available_actions %}
+          <button type="submit" name="action" value="hold" class="h-9 rounded-lg border border-amber-300 bg-white px-4 text-sm font-semibold text-amber-700 hover:bg-amber-50">Retener</button>
+        {% endif %}
+        {% if "cancel" in available_actions %}
+          <button type="submit" name="action" value="cancel" class="h-9 rounded-lg border border-red-300 bg-white px-4 text-sm font-semibold text-red-700 hover:bg-red-50">Cancelar</button>
+        {% endif %}
+      </div>
+    </form>
+  {% endif %}
+
+  <section class="rounded-lg border bg-white">
+    <div class="border-b px-4 py-3">
+      <h2 class="text-sm font-semibold text-gray-900">Eventos recientes de la unidad</h2>
+    </div>
+    <div class="divide-y divide-gray-100">
+      {% for event in recent_events %}
+        <div class="px-4 py-3">
+          <p class="text-sm font-semibold text-gray-900">{{ event.get_event_type_display }} <span class="font-normal text-gray-500">{{ event.station.code }}</span></p>
+          <p class="mt-1 text-xs text-gray-600">{{ event.event_at|date:"d/m/Y H:i" }} / {{ event.operator.get_username|default:"-" }}</p>
+        </div>
+      {% empty %}
+        <p class="px-4 py-5 text-sm text-gray-500">Sin eventos registrados.</p>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

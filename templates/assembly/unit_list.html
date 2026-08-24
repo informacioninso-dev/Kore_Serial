@@ -11,6 +11,9 @@
       <h1 class="text-xl font-semibold">Unidades serializadas</h1>
       <p class="mt-1 text-sm text-gray-600">Seguimiento individual de cada unidad ensamblada.</p>
     </div>
+    {% if perms.assembly.add_serializedunit %}
+      <a href="{% url 'assembly:unit_create' %}" class="inline-flex h-9 items-center rounded-lg bg-orange-600 px-4 text-sm font-semibold text-white hover:bg-orange-700">Nueva unidad</a>
+    {% endif %}
   </div>
 
   <form method="get" class="mb-4 flex flex-wrap items-end gap-3 rounded-2xl border bg-white p-3">
@@ -35,7 +38,7 @@
       Hasta
       <input type="date" name="date_to" value="{{ request.GET.date_to }}" class="mt-1 h-9 rounded-lg border border-gray-300 px-3 text-sm">
     </label>
-    <button type="submit" class="h-9 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700">Filtrar</button>
+    <button type="submit" class="h-9 rounded-lg bg-orange-600 px-4 text-sm font-semibold text-white hover:bg-orange-700">Filtrar</button>
     <a href="{% url 'assembly:unit_list' %}" class="h-9 rounded-lg border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Limpiar</a>
   </form>
 
@@ -51,6 +54,12 @@
             {% include "assembly/_status_badge.html" with unit=unit %}
           </div>
           <p class="mt-3 text-xs text-gray-500">Registrada {{ unit.created_at|date:"d/m/Y H:i" }}</p>
+          <div class="mt-3 flex gap-2">
+            <a href="{% url 'assembly:unit_detail' unit.pk %}" class="inline-flex rounded-lg border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">Expediente</a>
+            {% if perms.assembly.change_serializedunit %}
+              <a href="{% url 'assembly:unit_update' unit.pk %}" class="inline-flex rounded-lg border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">Editar</a>
+            {% endif %}
+          </div>
         </article>
       {% endfor %}
     </div>
@@ -64,6 +73,7 @@
             <th class="px-4 py-3">Version</th>
             <th class="px-4 py-3">Estado</th>
             <th class="px-4 py-3">Registro</th>
+            <th class="px-4 py-3 text-right">Acciones</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
@@ -74,6 +84,12 @@
               <td class="px-4 py-3 text-gray-700"><span class="font-medium text-gray-900">{{ unit.version.name }}</span><span class="block text-xs text-gray-500">{{ unit.version.code }}</span></td>
               <td class="px-4 py-3">{% include "assembly/_status_badge.html" with unit=unit %}</td>
               <td class="px-4 py-3 text-gray-700">{{ unit.created_at|date:"d/m/Y H:i" }}</td>
+              <td class="px-4 py-3 text-right">
+                <a href="{% url 'assembly:unit_detail' unit.pk %}" class="inline-flex rounded-lg border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">Expediente</a>
+                {% if perms.assembly.change_serializedunit %}
+                  <a href="{% url 'assembly:unit_update' unit.pk %}" class="inline-flex rounded-lg border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">Editar</a>
+                {% endif %}
+              </td>
             </tr>
           {% endfor %}
         </tbody>
@@ -115,7 +131,7 @@
     </div>
   {% else %}
     <div class="rounded-2xl border border-dashed bg-white p-6 text-center text-sm text-gray-500">
-      No hay unidades serializadas registradas{% if request.GET.q or request.GET.status or request.GET.date_from or request.GET.date_to %} con los filtros actuales. <a href="{% url 'assembly:unit_list' %}" class="text-blue-600 hover:underline">Limpiar filtros.</a>{% else %} aun.{% endif %}
+      No hay unidades serializadas registradas{% if request.GET.q or request.GET.status or request.GET.date_from or request.GET.date_to %} con los filtros actuales. <a href="{% url 'assembly:unit_list' %}" class="text-orange-700 hover:underline">Limpiar filtros.</a>{% else %} aun.{% endif %}
     </div>
   {% endif %}
 </div>

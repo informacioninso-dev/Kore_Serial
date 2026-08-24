@@ -5,20 +5,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>{% block title %}Mi ERP{% endblock %}</title>
+<title>{% block title %}Kore Serial{% endblock %}</title>
 
 
-<!-- Tailwind CSS (built) -->
-<link rel="stylesheet" href="{% static 'css/app.css' %}" />
-<!-- Dropdown component styles -->
-<link rel="stylesheet" href="{% static 'css/dropdown.css' %}" />
-<!-- Brand theme overrides -->
-<link rel="stylesheet" href="{% static 'css/kore-theme.css' %}" />
-
-
-<!-- Favicon/Icons -->
-<link rel="icon" type="image/png" href="{% static 'img/logo.png' %}" />
-<link rel="apple-touch-icon" href="{% static 'img/logo.png' %}" />
+{% include 'partials/_head_assets.html' %}
 
 
 <!-- Bloque para meter CSS extra por vista (p. ej. charts, libs) -->

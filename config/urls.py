@@ -6,12 +6,24 @@ from django.urls import include, path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from config.views import DashboardView
+from tenants import tenant_views
 
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", DashboardView.as_view(), name="dashboard"),
-    path("ensamblaje/", include(("assembly.urls", "assembly"), namespace="assembly")),
+    path("produccion/", include(("assembly.urls", "assembly"), namespace="assembly")),
+    path("ensamblaje/", include(("assembly.urls", "assembly"), namespace="assembly_legacy")),
+    path("configuracion/", include(("core.urls", "core"), namespace="core")),
+    path("usuarios/", tenant_views.TenantUserListView.as_view(), name="tenant_users"),
+    path("usuarios/nuevo/", tenant_views.TenantUserCreateView.as_view(), name="tenant_user_create"),
+    path("usuarios/<int:pk>/toggle/", tenant_views.TenantUserToggleView.as_view(), name="tenant_user_toggle"),
+    path("usuarios/<int:pk>/eliminar/", tenant_views.TenantUserDeleteView.as_view(), name="tenant_user_delete"),
+    path("usuarios/<int:pk>/password/", tenant_views.TenantUserPasswordResetView.as_view(), name="tenant_user_password_reset"),
+    path("usuarios/<int:pk>/rol/", tenant_views.TenantUserRoleUpdateView.as_view(), name="tenant_user_role_update"),
+    path("usuarios/roles/nuevo/", tenant_views.TenantRoleCreateView.as_view(), name="tenant_role_create"),
+    path("usuarios/roles/<int:pk>/editar/", tenant_views.TenantRoleUpdateView.as_view(), name="tenant_role_update"),
+    path("usuarios/roles/<int:pk>/eliminar/", tenant_views.TenantRoleDeleteView.as_view(), name="tenant_role_delete"),
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("accounts/login/", auth_views.LoginView.as_view(template_name="auth/login.html"), name="login"),

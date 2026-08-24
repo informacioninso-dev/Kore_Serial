@@ -1,0 +1,17 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{% block title %}Kore Serial{% endblock %}</title>
+{% include 'partials/_head_assets.html' %}
+</head>
+<body class="kore-body min-h-screen bg-gray-50 text-gray-900">
+<main class="kore-main min-h-screen grid place-items-center px-4 py-8">
+  <section class="w-full max-w-md rounded-2xl border bg-white p-6 shadow-sm">
+    {% block auth_content %}{% endblock %}
+  </section>
+</main>
+</body>
+</html>

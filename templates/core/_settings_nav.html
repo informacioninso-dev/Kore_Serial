@@ -1,0 +1,40 @@
+{% with active=nav_key|default:request.resolver_match.url_name %}
+<nav class="mb-5 -mx-1 overflow-x-auto scrollbar-none">
+  <div class="flex min-w-max gap-2 px-1 py-1">
+    {% if is_tenant_admin %}
+      <a href="{% url 'core:settings' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'settings' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Panel</a>
+      <a href="{% url 'core:company' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'company' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Empresa</a>
+      <a href="{% url 'core:unit_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'units' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Unidades</a>
+      <a href="{% url 'core:warehouse_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'warehouses' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Bodegas</a>
+      <a href="{% url 'core:location_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'locations' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Ubicaciones</a>
+    {% endif %}
+    {% if is_tenant_admin or perms.assembly.view_assembledproduct %}
+      <a href="{% url 'assembly:product_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'products' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Productos</a>
+    {% endif %}
+    {% if is_tenant_admin or perms.assembly.view_productversion %}
+      <a href="{% url 'assembly:version_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'versions' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Versiones</a>
+    {% endif %}
+    {% if is_tenant_admin or perms.assembly.view_assemblyline %}
+      <a href="{% url 'assembly:line_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'lines' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Lineas</a>
+    {% endif %}
+    {% if is_tenant_admin or perms.assembly.view_assemblystation %}
+      <a href="{% url 'assembly:station_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'stations' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Estaciones</a>
+    {% endif %}
+    {% if is_tenant_admin or perms.assembly.view_assemblyroute %}
+      <a href="{% url 'assembly:route_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'routes' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Rutas</a>
+    {% endif %}
+    {% if is_tenant_admin or perms.assembly.view_assemblyroutestep %}
+      <a href="{% url 'assembly:step_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'steps' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Pasos</a>
+    {% endif %}
+    {% if is_tenant_admin or perms.assembly.view_routestepcomponentrequirement %}
+      <a href="{% url 'assembly:requirement_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'requirements' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Requerimientos</a>
+    {% endif %}
+    {% if is_tenant_admin or perms.core.view_equipmentintegration %}
+      <a href="{% url 'assembly:equipment_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'equipment' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Equipos</a>
+    {% endif %}
+    {% if is_tenant_admin %}
+      <a href="{% url 'core:system_info' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'system_info' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Sistema</a>
+    {% endif %}
+  </div>
+</nav>
+{% endwith %}

@@ -1,15 +1,106 @@
 {% extends "base.html" %}
 
-{% block title %}Inicio | Kore Serial{% endblock %}
+{% block title %}Produccion | Kore Serial{% endblock %}
 
 {% block content %}
-<div class="mx-auto max-w-7xl px-4 py-5">
-  <div class="rounded-2xl border bg-white p-6">
-    <h1 class="text-xl font-semibold">Kore Serial</h1>
-    <p class="mt-1 text-sm text-gray-600">Control de produccion de unidades serializadas.</p>
-    {% if perms.assembly.view_serializedunit %}
-      <a href="{% url 'assembly:unit_list' %}" class="mt-5 inline-flex rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Ver unidades</a>
-    {% endif %}
+<div class="mx-auto max-w-7xl px-4 py-3">
+  {% include "assembly/_nav.html" with nav_key="index" %}
+
+  <div class="mb-5">
+    <h1 class="text-xl font-semibold text-gray-900">Produccion</h1>
+    <p class="mt-1 text-sm text-gray-600">Control serializado por unidad, eventos, componentes, calidad y liberacion.</p>
   </div>
+
+  <section class="grid gap-3 md:grid-cols-3 xl:grid-cols-8">
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Planes activos</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ active_plan_count }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">En secuencia</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ active_queue_count }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Unidades</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ unit_count }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Registradas</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ registered_count }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">En proceso</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ in_process_count }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Calidad pendiente</p>
+      <p class="mt-2 text-2xl font-semibold text-amber-700">{{ pending_quality_count }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Retrabajos abiertos</p>
+      <p class="mt-2 text-2xl font-semibold text-red-700">{{ open_rework_count }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Liberadas</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ released_count }}</p>
+    </div>
+  </section>
+
+  <section class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+    {% if perms.assembly.view_productionplan %}
+      <a href="{% url 'assembly:plan_list' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50">
+        <p class="font-semibold text-gray-900">Planes</p>
+        <p class="mt-1 text-sm text-gray-600">Demanda ejecutable por linea, version y turno.</p>
+      </a>
+    {% endif %}
+    {% if perms.assembly.view_productionqueueitem %}
+      <a href="{% url 'assembly:queue_list' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50">
+        <p class="font-semibold text-gray-900">Secuencia</p>
+        <p class="mt-1 text-sm text-gray-600">Cola de ejecucion por linea y proxima estacion.</p>
+      </a>
+    {% endif %}
+    {% if perms.assembly.add_unitstationevent %}
+      <a href="{% url 'assembly:station_console' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50">
+        <p class="font-semibold text-gray-900">Estacion</p>
+        <p class="mt-1 text-sm text-gray-600">Ejecucion de unidad por puesto de trabajo.</p>
+      </a>
+    {% endif %}
+    {% if perms.assembly.view_serializedunit %}
+      <a href="{% url 'assembly:unit_list' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50">
+        <p class="font-semibold text-gray-900">Unidades</p>
+        <p class="mt-1 text-sm text-gray-600">Registro y seguimiento de cada unidad fisica.</p>
+      </a>
+    {% endif %}
+    {% if perms.assembly.view_unitstationevent %}
+      <a href="{% url 'assembly:event_list' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50">
+        <p class="font-semibold text-gray-900">Eventos</p>
+        <p class="mt-1 text-sm text-gray-600">Bitacora operacional de piso.</p>
+      </a>
+    {% endif %}
+    {% if perms.assembly.view_installedcomponent %}
+      <a href="{% url 'assembly:component_list' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50">
+        <p class="font-semibold text-gray-900">Componentes</p>
+        <p class="mt-1 text-sm text-gray-600">As-built por serial, lote o ambos.</p>
+      </a>
+    {% endif %}
+    {% if perms.assembly.view_qualitygate %}
+      <a href="{% url 'assembly:quality_list' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50">
+        <p class="font-semibold text-gray-900">Calidad</p>
+        <p class="mt-1 text-sm text-gray-600">Controles bloqueantes y evidencia.</p>
+      </a>
+    {% endif %}
+    {% if perms.assembly.view_reworkorder %}
+      <a href="{% url 'assembly:rework_list' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50">
+        <p class="font-semibold text-gray-900">Retrabajos</p>
+        <p class="mt-1 text-sm text-gray-600">Correcciones, revision y cierre.</p>
+      </a>
+    {% endif %}
+    {% if perms.assembly.view_releaseapproval %}
+      <a href="{% url 'assembly:release_list' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50">
+        <p class="font-semibold text-gray-900">Liberacion</p>
+        <p class="mt-1 text-sm text-gray-600">Decision formal antes del cierre de unidad.</p>
+      </a>
+    {% endif %}
+  </section>
 </div>
 {% endblock %}

@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 
 from django.db import connection, models
@@ -10,6 +11,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 
 from core.storages import private_storage
+
+logger = logging.getLogger(__name__)
 
 #-------------------Modelo abstracto para auditoría de creación y modificación
 class AuditModel(models.Model):
@@ -588,12 +591,19 @@ class CompanyConfig(AuditModel):
     @classmethod
     def get(cls):
         cache_key = cls.cache_key()
-        cached = cache.get(cache_key, cls._CACHE_MISS)
+        try:
+            cached = cache.get(cache_key, cls._CACHE_MISS)
+        except Exception as exc:
+            logger.warning("No se pudo leer CompanyConfig desde cache: %s", exc)
+            cached = cls._CACHE_MISS
         if cached is not cls._CACHE_MISS:
             return cached
 
         config = cls.objects.first()
-        cache.set(cache_key, config, timeout=300)
+        try:
+            cache.set(cache_key, config, timeout=300)
+        except Exception as exc:
+            logger.warning("No se pudo guardar CompanyConfig en cache: %s", exc)
         return config
 
     @classmethod
@@ -603,7 +613,10 @@ class CompanyConfig(AuditModel):
 
     @classmethod
     def clear_cache(cls):
-        cache.delete(cls.cache_key())
+        try:
+            cache.delete(cls.cache_key())
+        except Exception as exc:
+            logger.warning("No se pudo limpiar CompanyConfig de cache: %s", exc)
 
 
 # ─── Registro de reportes/documentos emitidos (ISO 13485 trazabilidad documental) ──

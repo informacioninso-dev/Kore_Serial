@@ -1,10 +1,38 @@
-{% with url_name=request.resolver_match.url_name %}
+{% with active=nav_key|default:request.resolver_match.url_name %}
 <nav class="mb-5 -mx-1 overflow-x-auto scrollbar-none">
   <div class="flex min-w-max gap-2 px-1 py-1">
+    <a href="{% url 'assembly:index' %}"
+       class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'dashboard' or active == 'index' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+      Panel
+    </a>
     <a href="{% url 'assembly:unit_list' %}"
-       class="whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-colors {% if url_name == 'unit_list' %}bg-blue-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+       class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'units' or active == 'unit_list' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
       Unidades
     </a>
+    {% if perms.assembly.view_productionplan %}
+      <a href="{% url 'assembly:plan_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'plans' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Planes</a>
+    {% endif %}
+    {% if perms.assembly.view_productionqueueitem %}
+      <a href="{% url 'assembly:queue_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'sequence' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Secuencia</a>
+    {% endif %}
+    {% if perms.assembly.add_unitstationevent %}
+      <a href="{% url 'assembly:station_console' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'station_console' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Estacion</a>
+    {% endif %}
+    {% if perms.assembly.view_unitstationevent %}
+      <a href="{% url 'assembly:event_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'events' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Eventos</a>
+    {% endif %}
+    {% if perms.assembly.view_installedcomponent %}
+      <a href="{% url 'assembly:component_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'components' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Componentes</a>
+    {% endif %}
+    {% if perms.assembly.view_qualitygate %}
+      <a href="{% url 'assembly:quality_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'quality' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Calidad</a>
+    {% endif %}
+    {% if perms.assembly.view_reworkorder %}
+      <a href="{% url 'assembly:rework_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'rework' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Retrabajos</a>
+    {% endif %}
+    {% if perms.assembly.view_releaseapproval %}
+      <a href="{% url 'assembly:release_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'release' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Liberacion</a>
+    {% endif %}
   </div>
 </nav>
 {% endwith %}

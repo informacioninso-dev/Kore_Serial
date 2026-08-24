@@ -3,12 +3,26 @@
   <div class="container mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
     <a href="{% url 'dashboard' %}" class="flex items-center gap-3">
       <img src="{% static 'img/logo.png' %}" alt="Logo" class="kore-brand-mark h-8 w-8" />
-      <span class="kore-brand-wordmark font-semibold">KORE</span>
+      <span class="kore-brand-wordmark">
+        <span class="kore-brand-main">KORE</span>
+        <span class="kore-brand-suffix">Serial</span>
+      </span>
     </a>
 
     <!-- Desktop nav -->
     <nav class="hidden md:flex items-center gap-6">
       {% if request.user.is_authenticated %}
+        {% with ns=request.resolver_match.namespace %}
+          {% if modules.production %}
+            <a href="{% url 'assembly:index' %}" class="kore-topbar-link {% if ns == 'assembly' %}font-semibold{% endif %}">Producción</a>
+          {% endif %}
+          {% if is_tenant_admin %}
+            <a href="{% url 'tenant_users' %}" class="kore-topbar-link {% if request.resolver_match.url_name == 'tenant_users' %}font-semibold{% endif %}">Usuarios</a>
+          {% endif %}
+          {% if modules.core %}
+            <a href="{% url 'core:settings' %}" class="kore-topbar-link {% if ns == 'core' %}font-semibold{% endif %}">Configuración</a>
+          {% endif %}
+        {% endwith %}
         <span class="kore-topbar-meta">Hola, {{ request.user.get_username }}</span>
         <a href="{% url 'password_change' %}" class="kore-topbar-link">Cambiar contraseña</a>
         <form method="post" action="{% url 'logout' %}" class="inline">
@@ -39,7 +53,10 @@
   <div class="kore-drawer-header flex items-center justify-between px-4 py-3 border-b">
     <a href="{% url 'dashboard' %}" class="flex items-center gap-3">
       <img src="{% static 'img/logo.png' %}" alt="Logo" class="kore-brand-mark h-8 w-8" />
-      <span class="kore-brand-wordmark font-semibold">KORE</span>
+      <span class="kore-brand-wordmark">
+        <span class="kore-brand-main">KORE</span>
+        <span class="kore-brand-suffix">Serial</span>
+      </span>
     </a>
     <button id="mobile-drawer-close" class="kore-drawer-close p-2 rounded-lg" aria-label="Cerrar menu">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -75,8 +92,8 @@
       </a>
       {% endif %}
       {% if modules.production %}
-      <a href="{% url 'production:index' %}"
-         class="{% if ns == 'production' %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
+      <a href="{% url 'assembly:unit_list' %}"
+         class="{% if ns == 'assembly' %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
         Producción
       </a>
       {% endif %}
@@ -114,7 +131,7 @@
   </nav>
 
   <!-- Usuario -->
-  <div class="border-t border-gray-200 p-3 space-y-1" style="border-color: rgba(19,77,95,0.12)">
+  <div class="border-t border-gray-200 p-3 space-y-1" style="border-color: rgba(51,51,51,0.12)">
     <span class="block px-3 py-2 text-sm" style="color: var(--color-gray-500)">{{ request.user.get_username }}</span>
     <a href="{% url 'password_change' %}" class="kore-nav-item-mobile">Cambiar contraseña</a>
     <form method="post" action="{% url 'logout' %}">

@@ -2,20 +2,19 @@
 <footer class="kore-footer border-t bg-white">
   <div class="container mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-gray-500">
     <p>
-      Todos los derechos reservados. &copy;
-      <a href="https://www.binnso.com" class="hover:text-gray-700">Binnso</a>
-      {% now 'Y' %}.
+      Desde 2019 creando soluciones empresariales. &copy; 2025-{% now 'Y' %}
+      <a href="https://www.binnso.com" class="hover:text-gray-700">Binnso</a>.
     </p>
     <div class="flex flex-wrap items-center justify-end gap-3">
       {% if is_tenant_admin %}
         <a href="{% url 'core:system_info' %}"
            class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-mono text-[11px] text-gray-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
            title="Informaci&oacute;n de la versi&oacute;n instalada">
-          Kore ERP {{ kore_system.display_version }} &middot; {{ kore_system.release_id }}
+          Kore Serial {{ kore_system.display_version }} &middot; {{ kore_system.release_id }}
         </a>
       {% else %}
         <span class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-mono text-[11px] text-gray-500">
-          Kore ERP {{ kore_system.display_version }} &middot; {{ kore_system.release_id }}
+          Kore Serial {{ kore_system.display_version }} &middot; {{ kore_system.release_id }}
         </span>
       {% endif %}
       <nav class="flex flex-wrap items-center gap-4" aria-label="Enlaces legales">

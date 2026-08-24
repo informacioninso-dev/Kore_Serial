@@ -67,6 +67,17 @@ class ModulePermissionMixin(PermissionRequiredMixin):
         user = self.request.user
         if user.is_superuser or user.groups.filter(name="admin").exists():
             return True
+        tenant = getattr(self.request, "tenant", None)
+        if tenant is not None:
+            from tenants.models import TenantMembership
+
+            if TenantMembership.objects.filter(
+                tenant=tenant,
+                user=user,
+                is_admin=True,
+                is_active=True,
+            ).exists():
+                return True
         return super().has_permission()
 
 

@@ -1,4 +1,4 @@
-# Estandar de Interfaz Kore ERP (fuente unica de verdad)
+# Estandar de Interfaz Kore Serial (fuente unica de verdad)
 
 > **Lee este archivo ANTES de crear o modificar cualquier pantalla.**
 > Todo modulo debe verse como una sola aplicacion. Si una pantalla no se parece
@@ -17,23 +17,26 @@
 
 ## 1. Paleta (NO inventar colores de marca)
 
-Fuente de verdad del CSS: `static/css/kore-theme.css` (remapea los tokens de Tailwind v4).
+Fuente de verdad del CSS: `static/css/kore-theme.css`.
+Las plantillas base deben cargar los assets compartidos con `templates/partials/_head_assets.html`, no declarando hojas de estilo sueltas.
 Si un valor aqui no coincide con el CSS, **gana el CSS**.
 
 | Rol | HEX | Token Tailwind | Uso |
 |-----|-----|----------------|-----|
-| Primario | `#134d5f` | — | Estructura: navbar, sidebar, titulos H1/H2 |
-| Accion / CTA | `#145da1` | `blue-600` | Boton principal, links, iconos de accion |
-| Accion hover | `#1050a0` | `blue-700` | Hover del CTA |
-| Accion suave | `#e8f0f9` | `blue-50` | Fondos hover, chips de accion |
-| Superficie | `#d9e2e8` | `gray-200` | Fondos de secciones, cards, bordes |
+| Primario | `#333333` | — | Estructura, navbar, texto principal, robustez ERP |
+| Accion / CTA | `#ff8c00` | `blue-600` | Boton principal, links, iconos de accion, flujo operativo |
+| Accion hover | `#e67e00` | `blue-700` | Hover del CTA |
+| Accion suave | `#fff4e5` | `blue-50` | Fondos hover, chips de accion |
+| Aviso | `#ffc107` | `amber-500` | Avisos y estado medio |
+| Superficie | `#f0f0f0` | `gray-100` | Fondo tecnico de interfaz de planta |
+| Borde / secundario | `#999999` | `gray-500` | Bordes, separadores, subtitulos |
 | Base | `#ffffff` | — | Area de trabajo |
 
-**El acento de marca es el AZUL `#145da1`, NO un teal/verde.**
-Prohibido reintroducir `#2563eb`, `#2a9d8f`, `#83c5be` u otros colores por defecto.
+**El acento de marca es el NARANJA INDUSTRIAL `#ff8c00`, NO el azul de Kore ERP.**
+Prohibido reintroducir `#134d5f`, `#145da1`, `#1050a0`, `#2563eb`, `#2a9d8f`, `#83c5be` u otros colores por defecto como colores de marca.
 
 El encabezado de los archivos generados (Excel `PatternFill` y `<th>` de las plantillas PDF)
-usa el primario de marca `#134D5F` con texto blanco — nunca `#2563eb`.
+usa el primario de estructura `#333333` o el acento operativo `#FF8C00` segun corresponda — nunca `#2563eb`.
 
 Como las clases de Tailwind estan remapeadas, en templates se usan utilidades normales
 (`bg-blue-600`, `text-blue-700`, `bg-gray-50`, etc.) y salen con la paleta de marca.
@@ -128,15 +131,15 @@ los modulos parezcan apps distintas cuando no se respeta.
 
 | Elemento | Color | Clases (outline) | Clases (solido) |
 |----------|-------|------------------|-----------------|
-| **CTA principal** (`+ Nuevo`, `Guardar`, `Crear`) | Azul solido | — | `bg-blue-600 text-white hover:bg-blue-700` |
-| **Accion de proceso** (`Confirmar`, `Autorizar`) | Azul outline | `border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100` | — |
+| **CTA principal** (`+ Nuevo`, `Guardar`, `Crear`) | Naranja solido | — | `bg-blue-600 text-white hover:bg-blue-700` |
+| **Accion de proceso** (`Confirmar`, `Autorizar`) | Naranja outline | `border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100` | — |
 | **Workflow positivo** (`Enviar`, `Aprobar`, `Recepcionar`, `Completar`) | Emerald outline | `border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100` | `bg-emerald-600 text-white hover:bg-emerald-700` |
 | **Boton PDF** | Rojo | `border-red-200 bg-red-50 text-red-700 hover:bg-red-100` | en dropdown: `text-red-600 hover:bg-red-50` |
 | **Boton Excel** | Verde | `border-green-200 bg-green-50 text-green-700 hover:bg-green-100` | en dropdown: `text-green-700 hover:bg-green-50` |
 | **Accion destructiva** (`Anular`, `Cancelar`, `Rechazar`) | Rojo | `border-red-300 bg-red-50 text-red-700 hover:bg-red-100` | — |
 | **Volver / secundaria neutra** | Neutro | `border text-gray-700 hover:bg-gray-50` | — |
 
-Regla rapida: **Excel = verde, PDF = rojo, CTA = azul.**
+Regla rapida: **Excel = verde, PDF = rojo, CTA = naranja operativo.**
 Emerald se reserva para acciones de workflow positivo y estados — nunca para Excel ni para el CTA.
 
 ---
@@ -167,7 +170,7 @@ Emerald se reserva para acciones de workflow positivo y estados — nunca para E
 
 Referencia: `templates/procurement/purchase_order_list.html`.
 
-1. `{% include "<app>/_nav.html" %}` — nav del submodulo (pills azules: activo `bg-blue-600 text-white`, inactivo `bg-gray-100 text-gray-700`).
+1. `{% include "<app>/_nav.html" %}` — nav del submodulo (pills naranjas: activo `bg-blue-600 text-white`, inactivo `bg-gray-100 text-gray-700`).
 2. Barra de filtros en tarjeta blanca (`rounded-2xl border bg-white p-3`), una sola fila en desktop:
    `Buscar (q)`, `status`, `date_from`, `date_to`, boton `Filtrar`, link `Limpiar`,
    y a la derecha (`ml-auto`): `PDF` | `Excel` | `+ Nuevo`.
@@ -205,7 +208,7 @@ Calidad tiene dos subareas y no deben mezclarse en la misma pantalla:
 - **Control QA** usa `templates/quality/_nav.html`: pendientes, inspecciones, planes QA, recepciones y trazabilidad.
 - **Gestion QA** usa `templates/quality/_nav_gestion.html`: NC/CAPA, quejas, auditorias, retiros y tecnovigilancia.
 - Una pantalla debe incluir solo uno de esos navs. Si aparece `quality/_nav.html` y `quality/_nav_gestion.html` juntos, la pantalla esta mal.
-- Ambos navs usan pills azules para el activo; no existe tema rojo por modulo.
+- Ambos navs usan pills naranjas para el activo; no existe tema rojo por modulo.
 
 ---
 
@@ -214,7 +217,7 @@ Calidad tiene dos subareas y no deben mezclarse en la misma pantalla:
 Referencia: `templates/procurement/purchase_order_detail.html`.
 
 - Cabecera con titulo + numero de documento + badge de estado.
-- Botonera superior derecha en este orden: workflow positivo (azul/emerald) → `PDF` (rojo) → `Excel` (verde) → `Volver` (neutro).
+- Botonera superior derecha en este orden: workflow positivo (naranja/emerald) → `PDF` (rojo) → `Excel` (verde) → `Volver` (neutro).
 - Card unica de **Informacion general** arriba: no separar cada campo en una card distinta.
 - La card de Informacion general usa grid interno (`sm:grid-cols-2`, `lg:grid-cols-3`) y badge de estado arriba a la derecha.
 - Debajo va el contenido dominante: lineas, materiales, historial, resultados, movimientos o evidencias.
@@ -226,7 +229,7 @@ Referencia: `templates/procurement/purchase_order_detail.html`.
 
 - Card de datos generales compacto + card de detalle (lineas/items) dominante.
 - Botones para agregar/quitar lineas.
-- CTA principal azul solido (`Guardar`/`Crear`) + secundaria neutra (`Cancelar`).
+- CTA principal naranja solido (`Guardar`/`Crear`) + secundaria neutra (`Cancelar`).
 - Errores por campo visibles.
 
 ### Contrato de un formulario reutilizable
@@ -235,7 +238,7 @@ Referencia: `templates/procurement/purchase_order_detail.html`.
 - Los campos generales van agrupados en una card compacta.
 - Las lineas/items/evidencias ocupan la card principal.
 - Agregar/quitar lineas usa botones neutros, salvo que sea una accion final de workflow.
-- Guardar/Crear es el unico CTA azul solido.
+- Guardar/Crear es el unico CTA naranja solido.
 - Si el formulario es largo, las acciones finales pueden ir en barra sticky inferior.
 
 ---
@@ -311,11 +314,11 @@ Kore se usa 8 horas al dia. Prioridad: **densidad de informacion y velocidad de 
 ## 9. Checklist obligatorio antes de dar por hecha una pantalla
 
 - [ ] Use `procurement` como referencia y copie su estructura.
-- [ ] CTA principal en azul (`bg-blue-600`), no en emerald ni teal.
+- [ ] CTA principal en naranja (`bg-blue-600`), no en emerald ni teal.
 - [ ] Boton Excel en verde, boton PDF en rojo.
 - [ ] Emerald solo en estados/workflow positivo; nunca en Excel ni CTA.
 - [ ] Badges de estado con el mapeo de la seccion 3.
-- [ ] Nav de submodulo con pills azules.
+- [ ] Nav de submodulo con pills naranjas.
 - [ ] Filtros `q/status/date_from/date_to` + paginacion 20/50/100 que preserva filtros.
 - [ ] 4 decimales en UI/PDF/Excel.
 - [ ] Permisos (`LoginRequiredMixin` + `ModulePermissionMixin`) y trazabilidad respetados.

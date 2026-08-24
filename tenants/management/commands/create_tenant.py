@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand, CommandError
-from django.core.management import call_command
+from django.core.management import call_command, get_commands
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django_tenants.utils import schema_context
@@ -69,8 +69,9 @@ class Command(BaseCommand):
             _delete_tenant_with_schema(client)
             raise
 
-        with schema_context(client.schema_name):
-            call_command("seed_data", verbosity=0)
+        if "seed_data" in get_commands():
+            with schema_context(client.schema_name):
+                call_command("seed_data", verbosity=0)
         _sync_company_config(client.schema_name, client.name)
 
         admin_user = options.get("admin_user")

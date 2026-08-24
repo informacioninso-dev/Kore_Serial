@@ -116,6 +116,8 @@ LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard"
 LOGOUT_REDIRECT_URL = "login"
 PASSWORD_RESET_TIMEOUT = 7200
+SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "kore_serial_sessionid")
+CSRF_COOKIE_NAME = os.getenv("CSRF_COOKIE_NAME", "kore_serial_csrftoken")
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
 CACHES = {

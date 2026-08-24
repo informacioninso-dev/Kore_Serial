@@ -17,7 +17,7 @@ ROLE_PERMISSION_MODULES = [
     ("procurement", "Compras"),
     ("inventory", "Inventario"),
     ("quality", "Calidad"),
-    ("production", "Producción"),
+    ("assembly", "Producción"),
     ("sales", "Ventas"),
     ("finance", "Finanzas"),
     ("core", "Configuración"),
