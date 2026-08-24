@@ -1,0 +1,24 @@
+[project]
+name = "kore-serial"
+version = "0.1.0"
+description = "Control de produccion para unidades serializadas"
+requires-python = ">=3.13,<4.0"
+dependencies = [
+    "django>=5.2.7,<6.0.0",
+    "django-tenants>=3.6,<4.0.0",
+    "psycopg[binary]>=3.2,<4.0.0",
+    "python-dotenv>=1.2.1,<2.0.0",
+    "weasyprint>=67.0,<68.0",
+    "openpyxl>=3.1.5,<4.0.0",
+    "httpx>=0.27.0,<0.28.0",
+    "djangorestframework>=3.16,<4.0.0",
+    "djangorestframework-simplejwt>=5.5,<6.0.0",
+    "django-htmx>=1.23,<2.0.0",
+    "redis>=5.2,<7.0.0",
+    "huey>=2.5,<3.0.0",
+    "gunicorn>=25.0,<26.0.0",
+]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

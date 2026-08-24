@@ -1,0 +1,259 @@
+/* ============================================================
+   Kore ERP — Brand Theme
+   Paleta oficial:
+     #134D5F  Azul Petróleo Profundo  — Primario (estructura, navbar)
+     #145DA1  Azul Eléctrico Vibrante — Acción (botones CTA, iconos)
+     #D9E2E8  Gris Azulado Pálido    — Superficie (fondos, cards)
+     #FFFFFF  Blanco Puro             — Área de trabajo
+   ============================================================ */
+
+/* ── Variables de marca ─────────────────────────────────────────────── */
+:root {
+  --kore-primary:      #134d5f;   /* estructura */
+  --kore-primary-deep: #0c3441;   /* hover estructura */
+  --kore-action:       #145da1;   /* CTA / acción */
+  --kore-action-hover: #1050a0;   /* hover CTA (~10% más oscuro) */
+  --kore-action-light: #e8f0f9;   /* fondo suave acción */
+  --kore-surface:      #d9e2e8;   /* fondos secciones */
+  --kore-base:         #ffffff;   /* área trabajo */
+  --kore-ink:          #1a2e38;   /* texto principal */
+  --kore-ink-muted:    #4a6570;   /* texto secundario */
+}
+
+/* ── Override tokens Tailwind v4 ────────────────────────────────────────
+   Dentro del mismo @layer theme, el último en cargarse gana.
+   kore-theme.css carga después de app.css → estos valores prevalecen.
+   ──────────────────────────────────────────────────────────────────── */
+@layer theme {
+  :root {
+    /* Blue → Azul Eléctrico (acción/CTA) */
+    --color-blue-50:  #e8f0f9;
+    --color-blue-100: #d1e4f5;
+    --color-blue-200: #a3c9eb;
+    --color-blue-300: #75ade0;
+    --color-blue-400: #4891d6;
+    --color-blue-500: #145da1;
+    --color-blue-600: #145da1;
+    --color-blue-700: #1050a0;
+    --color-blue-800: #0a3a78;
+    --color-blue-900: #072650;
+
+    /* Gray → Gris azulado neutro */
+    --color-gray-50:  #f4f7f9;
+    --color-gray-100: #ecf2f5;
+    --color-gray-200: #d9e2e8;
+    --color-gray-300: #bfd0d8;
+    --color-gray-400: #8aa3ae;
+    --color-gray-500: #627d88;
+    --color-gray-600: #4a6570;
+    --color-gray-700: #31505c;
+    --color-gray-800: #213c48;
+    --color-gray-900: #102f3a;
+  }
+}
+
+/* ── Base global ─────────────────────────────────────────────────────── */
+html {
+  background: #ecf2f5;
+}
+
+body {
+  color: #1a2e38;
+}
+
+/* ── Tipografía ──────────────────────────────────────────────────────── */
+h1, h2 {
+  color: #134d5f;
+}
+
+/* ── Topbar ─────────────────────────────────────────────────────────── */
+.kore-topbar {
+  background: #134d5f !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 24px -8px rgba(12, 52, 65, 0.55);
+}
+
+.kore-topbar .kore-brand-mark,
+.kore-drawer .kore-brand-mark {
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.14);
+  padding: 0.35rem;
+}
+
+.kore-brand-wordmark {
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.kore-topbar .kore-brand-wordmark { color: #ffffff; }
+
+.kore-topbar-meta {
+  color: rgba(255, 255, 255, 0.72) !important;
+  font-size: 0.875rem;
+}
+
+.kore-topbar-link {
+  color: #ffffff !important;
+  font-size: 0.875rem;
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.15s;
+  opacity: 0.88;
+}
+.kore-topbar-link:hover { opacity: 1; text-decoration: underline; }
+
+.kore-topbar-button {
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.20) !important;
+  background: rgba(255, 255, 255, 0.10) !important;
+  border-radius: 0.5rem;
+  padding: 0.375rem 0.625rem;
+  transition: background 0.15s;
+}
+.kore-topbar-button:hover {
+  background: rgba(255, 255, 255, 0.22) !important;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────── */
+.kore-sidebar {
+  background: #ffffff !important;
+  border-right: 1px solid #d9e2e8 !important;
+  box-shadow: 2px 0 16px -8px rgba(19, 77, 95, 0.15);
+}
+
+.kore-nav-item {
+  display: block;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: #31505c;
+  border-left: 3px solid transparent;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  text-decoration: none;
+}
+.kore-nav-item:hover {
+  background: #e8f0f9;
+  color: #145da1;
+  border-left-color: #a3c9eb;
+}
+
+.kore-nav-active {
+  display: block;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #145da1;
+  background: #e8f0f9;
+  border-left: 3px solid #145da1;
+  text-decoration: none;
+}
+
+/* ── Drawer móvil ────────────────────────────────────────────────────── */
+.kore-drawer {
+  background: #ffffff !important;
+  border-right: 1px solid #d9e2e8;
+}
+
+.kore-drawer-header {
+  background: #f4f7f9 !important;
+  border-bottom: 1px solid #d9e2e8 !important;
+}
+
+.kore-drawer .kore-brand-wordmark { color: #134d5f; }
+.kore-drawer-close:hover           { background: #ecf2f5; }
+
+.kore-nav-item-mobile {
+  display: block;
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  color: #31505c;
+  border-left: 3px solid transparent;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  text-decoration: none;
+}
+.kore-nav-item-mobile:hover {
+  background: #e8f0f9;
+  color: #145da1;
+  border-left-color: #a3c9eb;
+}
+
+.kore-nav-active-mobile {
+  display: block;
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #145da1;
+  background: #e8f0f9;
+  border-left: 3px solid #145da1;
+  text-decoration: none;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────── */
+.kore-footer {
+  background: #ffffff !important;
+  border-top: 1px solid #d9e2e8 !important;
+}
+.kore-footer a:hover { color: #145da1 !important; }
+
+/* ── Área de trabajo (main) ──────────────────────────────────────────── */
+.kore-main {
+  background: #d9e2e8;
+}
+
+/* Tarjetas sobre el fondo gris */
+.kore-main .rounded-2xl.border.bg-white,
+.kore-main .rounded-xl.border.bg-white,
+.kore-main .rounded-lg.border.bg-white {
+  background: #ffffff !important;
+  border-color: #c4d4dc !important;
+  box-shadow: 0 2px 12px -4px rgba(19, 77, 95, 0.12);
+}
+
+/* ── Botones de acción principal (CTA) ──────────────────────────────── */
+/* bg-blue-600 → Azul Eléctrico */
+.bg-blue-600 {
+  background-color: #145da1 !important;
+}
+.hover\:bg-blue-700:hover {
+  background-color: #1050a0 !important;
+}
+
+/* ── Links y texto de acción ─────────────────────────────────────────── */
+.text-blue-600 { color: #145da1 !important; }
+.hover\:text-blue-600:hover { color: #145da1 !important; }
+.text-blue-700 { color: #1050a0 !important; }
+
+/* ── Focus rings ─────────────────────────────────────────────────────── */
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #145da1 !important;
+  box-shadow: 0 0 0 3px rgba(20, 93, 161, 0.20) !important;
+  outline: none !important;
+}
+
+/* ── Badges ──────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.badge-primary   { background: rgba(19,  77,  95, 0.12); color: #134d5f; }
+.badge-action    { background: rgba(20,  93, 161, 0.12); color: #145da1; }
+.badge-success   { background: #d1fae5; color: #065f46; }
+.badge-warning   { background: #fef3c7; color: #92400e; }
+.badge-danger    { background: #fee2e2; color: #991b1b; }
+.badge-neutral   { background: #d9e2e8; color: #31505c; }
+
+/* ── Dropdown component ──────────────────────────────────────────────── */
+/* (dropdown.css usa var(--color-blue-600) que ya está overrideado) */

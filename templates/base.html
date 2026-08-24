@@ -1,0 +1,47 @@
+<!-- templates/base.html -->
+{% load static %}
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{% block title %}Mi ERP{% endblock %}</title>
+
+
+<!-- Tailwind CSS (built) -->
+<link rel="stylesheet" href="{% static 'css/app.css' %}" />
+<!-- Dropdown component styles -->
+<link rel="stylesheet" href="{% static 'css/dropdown.css' %}" />
+<!-- Brand theme overrides -->
+<link rel="stylesheet" href="{% static 'css/kore-theme.css' %}" />
+
+
+<!-- Favicon/Icons -->
+<link rel="icon" type="image/png" href="{% static 'img/logo.png' %}" />
+<link rel="apple-touch-icon" href="{% static 'img/logo.png' %}" />
+
+
+<!-- Bloque para meter CSS extra por vista (p. ej. charts, libs) -->
+{% block head_extra %}{% endblock %}
+</head>
+<body class="kore-body min-h-screen bg-gray-50 text-gray-900">
+<!-- Contenedor general con barra superior y contenido -->
+<div class="kore-shell flex min-h-screen flex-col">
+{% include 'partials/_navbar.html' %}
+
+
+<main id="content" class="kore-main w-full flex-1 pt-3 pb-4">
+{% include 'partials/_flash.html' %}
+{% block content %}{% endblock %}
+</main>
+
+
+{% include 'partials/_footer.html' %}
+</div>
+
+
+<!-- Scripts globales -->
+<script src="{% static 'js/dropdown.js' %}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

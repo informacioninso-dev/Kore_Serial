@@ -1,0 +1,146 @@
+{% load static %}
+<header class="kore-topbar bg-white/80 backdrop-blur border-b">
+  <div class="container mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
+    <a href="{% url 'dashboard' %}" class="flex items-center gap-3">
+      <img src="{% static 'img/logo.png' %}" alt="Logo" class="kore-brand-mark h-8 w-8" />
+      <span class="kore-brand-wordmark font-semibold">KORE</span>
+    </a>
+
+    <!-- Desktop nav -->
+    <nav class="hidden md:flex items-center gap-6">
+      {% if request.user.is_authenticated %}
+        <span class="kore-topbar-meta">Hola, {{ request.user.get_username }}</span>
+        <a href="{% url 'password_change' %}" class="kore-topbar-link">Cambiar contraseña</a>
+        <form method="post" action="{% url 'logout' %}" class="inline">
+          {% csrf_token %}
+          <button type="button" onclick="this.closest('form').submit()" class="kore-topbar-link">
+            Salir
+          </button>
+        </form>
+      {% else %}
+        <a href="{% url 'login' %}" class="kore-topbar-link">Iniciar sesión</a>
+      {% endif %}
+    </nav>
+
+    <!-- Hamburger button (mobile) -->
+    <button id="mobile-menu-btn" class="kore-topbar-button md:hidden p-2 rounded-lg transition-colors" aria-label="Abrir menu">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<!-- Mobile drawer overlay -->
+<div id="mobile-drawer-overlay" class="fixed inset-0 bg-black/40 z-40 hidden transition-opacity"></div>
+
+<!-- Mobile drawer -->
+<aside id="mobile-drawer" class="kore-drawer fixed top-0 left-0 bottom-0 w-72 z-50 shadow-xl transform -translate-x-full transition-transform duration-200 ease-in-out overflow-y-auto">
+  <div class="kore-drawer-header flex items-center justify-between px-4 py-3 border-b">
+    <a href="{% url 'dashboard' %}" class="flex items-center gap-3">
+      <img src="{% static 'img/logo.png' %}" alt="Logo" class="kore-brand-mark h-8 w-8" />
+      <span class="kore-brand-wordmark font-semibold">KORE</span>
+    </a>
+    <button id="mobile-drawer-close" class="kore-drawer-close p-2 rounded-lg" aria-label="Cerrar menu">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
+
+  {% if request.user.is_authenticated %}
+  <!-- Módulos -->
+  <nav class="p-3 space-y-1">
+    {% with ns=request.resolver_match.namespace %}
+      <a href="{% url 'dashboard' %}"
+         class="{% if not ns %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
+        Inicio
+      </a>
+      {% if modules.partners %}
+      <a href="{% url 'partners:index' %}"
+         class="{% if ns == 'partners' %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
+        Socios
+      </a>
+      {% endif %}
+      {% if modules.procurement %}
+      <a href="{% url 'procurement:order_list' %}"
+         class="{% if ns == 'procurement' %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
+        Compras
+      </a>
+      {% endif %}
+      {% if modules.quality %}
+      <a href="{% url 'quality:index' %}"
+         class="{% if ns == 'quality' %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
+        Calidad
+      </a>
+      {% endif %}
+      {% if modules.production %}
+      <a href="{% url 'production:index' %}"
+         class="{% if ns == 'production' %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
+        Producción
+      </a>
+      {% endif %}
+      {% if modules.sales %}
+      <a href="{% url 'sales:index' %}"
+         class="{% if ns == 'sales' %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
+        Ventas
+      </a>
+      {% endif %}
+      {% if modules.inventory %}
+      <a href="{% url 'inventory:index' %}"
+         class="{% if ns == 'inventory' %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
+        Inventario
+      </a>
+      {% endif %}
+      {% if modules.finance %}
+      <a href="{% url 'finance:index' %}"
+         class="{% if ns == 'finance' %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
+        Contabilidad
+      </a>
+      {% endif %}
+      {% if is_tenant_admin %}
+      <a href="{% url 'tenant_users' %}"
+         class="{% if request.resolver_match.url_name == 'tenant_users' %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
+        Usuarios
+      </a>
+      {% endif %}
+      {% if modules.core %}
+      <a href="{% url 'core:settings' %}"
+         class="{% if ns == 'core' %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
+        Configuración
+      </a>
+      {% endif %}
+    {% endwith %}
+  </nav>
+
+  <!-- Usuario -->
+  <div class="border-t border-gray-200 p-3 space-y-1" style="border-color: rgba(19,77,95,0.12)">
+    <span class="block px-3 py-2 text-sm" style="color: var(--color-gray-500)">{{ request.user.get_username }}</span>
+    <a href="{% url 'password_change' %}" class="kore-nav-item-mobile">Cambiar contraseña</a>
+    <form method="post" action="{% url 'logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="w-full text-left rounded-lg px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+        Salir
+      </button>
+    </form>
+  </div>
+  {% else %}
+  <div class="p-3">
+    <a href="{% url 'login' %}" class="kore-nav-active-mobile">Iniciar sesión</a>
+  </div>
+  {% endif %}
+</aside>
+
+<script>
+(function(){
+  const btn     = document.getElementById('mobile-menu-btn');
+  const drawer  = document.getElementById('mobile-drawer');
+  const overlay = document.getElementById('mobile-drawer-overlay');
+  const closeBtn = document.getElementById('mobile-drawer-close');
+  function open()  { overlay.classList.remove('hidden'); drawer.classList.remove('-translate-x-full'); }
+  function close() { drawer.classList.add('-translate-x-full'); overlay.classList.add('hidden'); }
+  btn.addEventListener('click', open);
+  closeBtn.addEventListener('click', close);
+  overlay.addEventListener('click', close);
+})();
+</script>

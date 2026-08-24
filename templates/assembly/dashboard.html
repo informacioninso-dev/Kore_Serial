@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio | Kore Serial{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-5">
+  <div class="rounded-2xl border bg-white p-6">
+    <h1 class="text-xl font-semibold">Kore Serial</h1>
+    <p class="mt-1 text-sm text-gray-600">Control de produccion de unidades serializadas.</p>
+    {% if perms.assembly.view_serializedunit %}
+      <a href="{% url 'assembly:unit_list' %}" class="mt-5 inline-flex rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Ver unidades</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

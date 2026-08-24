@@ -1,0 +1,58 @@
+{% comment %}
+Paginacion compartida (CC-2026-029).
+
+Conserva los filtros de forma generica, no por lista fija: la version anterior
+solo recordaba `q` y `status`, asi que cualquier filtro nuevo se perdia al pasar
+de pagina y habia que acordarse de agregarlo aqui. Nadie se acuerda.
+
+`{% templatetag openblock %} querystring {% templatetag closeblock %}` (Django 5.1+) reescribe la peticion actual cambiando
+solo lo que se le indica, de modo que todo lo demas viaja solo.
+
+Contexto esperado: page_obj. Opcional: per_page.
+{% endcomment %}
+{% if page_obj %}
+  <div class="mt-4 flex flex-col gap-3 px-1 text-xs text-gray-600 sm:flex-row sm:items-center sm:justify-between">
+
+    <form method="get" class="flex items-center gap-2">
+      {# Todo filtro vigente viaja como oculto; solo cambiamos cuantos y volvemos al inicio. #}
+      {% for clave, valor in request.GET.items %}
+        {% if clave != "per_page" and clave != "page" %}
+          <input type="hidden" name="{{ clave }}" value="{{ valor }}">
+        {% endif %}
+      {% endfor %}
+      <span>Mostrar</span>
+      <select name="per_page" onchange="this.form.submit()"
+              class="h-8 rounded-lg border border-gray-300 px-2 text-xs">
+        <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
+        <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+        <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+      </select>
+      <span>
+        de {{ page_obj.paginator.count }} registro{{ page_obj.paginator.count|pluralize }}
+      </span>
+    </form>
+
+    {% if page_obj.has_other_pages %}
+      <div class="flex items-center gap-2">
+        <span>
+          P&aacute;gina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+          &middot; {{ page_obj.start_index }}&ndash;{{ page_obj.end_index }}
+        </span>
+        <div class="inline-flex gap-1">
+          {% if page_obj.has_previous %}
+            <a href="{% querystring page=page_obj.previous_page_number %}"
+               class="rounded-lg border px-2 py-1 hover:bg-gray-50">Anterior</a>
+          {% else %}
+            <span class="cursor-not-allowed rounded-lg border px-2 py-1 text-gray-400">Anterior</span>
+          {% endif %}
+          {% if page_obj.has_next %}
+            <a href="{% querystring page=page_obj.next_page_number %}"
+               class="rounded-lg border px-2 py-1 hover:bg-gray-50">Siguiente</a>
+          {% else %}
+            <span class="cursor-not-allowed rounded-lg border px-2 py-1 text-gray-400">Siguiente</span>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% endif %}
