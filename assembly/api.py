@@ -1,11 +1,66 @@
+from decimal import Decimal
+
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils import timezone
 from rest_framework import serializers, status
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.utils import timezone
 
-from .models import EquipmentInboundEventStatus, StationEventType
-from .services import process_equipment_event
+from .models import EquipmentInboundEvent, EquipmentInboundEventStatus, QualityGateStatus, SerializedUnit, StationEventType
+from .services import (
+    current_route_step_for,
+    install_component,
+    process_equipment_event,
+    record_station_event,
+    review_quality_gate,
+)
+
+
+API_PERMISSIONS = {
+    "consult_units": "assembly.view_serializedunit",
+    "register_station_events": "assembly.add_unitstationevent",
+    "install_components": "assembly.add_installedcomponent",
+    "review_quality": "assembly.change_qualitygate",
+    "receive_equipment_events": "assembly.add_equipmentinboundevent",
+    "view_equipment_events": "assembly.view_equipmentinboundevent",
+}
+
+
+def _step_payload(route, step):
+    if step is None:
+        return None
+    return {
+        "route": {"code": route.code, "revision": route.revision},
+        "sequence": step.sequence,
+        "name": step.name,
+        "station": {"code": step.station.code, "name": step.station.name, "line_code": step.station.line.code},
+        "requires_component_trace": step.requires_component_trace,
+        "requires_quality_gate": step.requires_quality_gate,
+    }
+
+
+def _unit_payload(unit):
+    route, step = current_route_step_for(unit)
+    return {
+        "serial_number": unit.serial_number,
+        "status": unit.status,
+        "status_label": unit.get_status_display(),
+        "product": {"code": unit.version.product.code, "name": unit.version.product.name},
+        "version": {"code": unit.version.code, "name": unit.version.name},
+        "production_plan": unit.production_plan.code if unit.production_plan_id else "",
+        "current_step": _step_payload(route, step),
+        "as_built_complete": unit.as_built_complete,
+    }
+
+
+class MESAPIView(APIView):
+    required_permission = ""
+
+    def enforce_permission(self, permission=None):
+        permission = permission or self.required_permission
+        if permission and not self.request.user.has_perm(permission):
+            raise PermissionDenied("El token no tiene permiso para esta operacion MES.")
 
 
 class EquipmentEventSerializer(serializers.Serializer):
@@ -20,17 +75,128 @@ class EquipmentEventSerializer(serializers.Serializer):
     notes = serializers.CharField(required=False, allow_blank=True, default="")
 
 
-class EquipmentEventIngestView(APIView):
-    """Entrada HTTP para recolectores que operan fuera de los workers Django."""
+class StationEventSerializer(serializers.Serializer):
+    unit_serial_number = serializers.CharField(max_length=120)
+    station_code = serializers.CharField(max_length=50)
+    event_type = serializers.ChoiceField(choices=StationEventType.choices)
+    operator_username = serializers.CharField(max_length=150, required=False, allow_blank=True, default="")
+    event_at = serializers.DateTimeField(required=False, default=timezone.now)
+    external_reference = serializers.CharField(max_length=120, required=False, allow_blank=True, default="")
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+    metadata = serializers.JSONField(required=False, default=dict)
+
+
+class InstalledComponentSerializer(serializers.Serializer):
+    unit_serial_number = serializers.CharField(max_length=120)
+    requirement_id = serializers.IntegerField(min_value=1)
+    serial_number = serializers.CharField(max_length=120, required=False, allow_blank=True, default="")
+    lot_number = serializers.CharField(max_length=120, required=False, allow_blank=True, default="")
+    quantity = serializers.DecimalField(max_digits=14, decimal_places=4, min_value=Decimal("0.0001"), required=False, default=1)
+    operator_username = serializers.CharField(max_length=150, required=False, allow_blank=True, default="")
+    installed_at = serializers.DateTimeField(required=False, default=timezone.now)
+    source_event_id = serializers.IntegerField(min_value=1, required=False, allow_null=True, default=None)
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class QualityDecisionSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=[QualityGateStatus.PASSED, QualityGateStatus.FAILED, QualityGateStatus.WAIVED])
+    evidence_reference = serializers.CharField(max_length=120)
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+    inspector_username = serializers.CharField(max_length=150, required=False, allow_blank=True, default="")
+
+
+class IntegrationProfileView(MESAPIView):
+    def get(self, request):
+        return Response(
+            {
+                "username": request.user.get_username(),
+                "permissions": {
+                    operation: request.user.has_perm(permission)
+                    for operation, permission in API_PERMISSIONS.items()
+                },
+            }
+        )
+
+
+class UnitDetailView(MESAPIView):
+    required_permission = API_PERMISSIONS["consult_units"]
+
+    def get(self, request, serial_number):
+        self.enforce_permission()
+        unit = SerializedUnit.objects.select_related("version__product", "production_plan").filter(serial_number=serial_number).first()
+        if unit is None:
+            raise NotFound("Unidad no encontrada.")
+        return Response(_unit_payload(unit))
+
+
+class UnitCurrentStepView(MESAPIView):
+    required_permission = API_PERMISSIONS["consult_units"]
+
+    def get(self, request, serial_number):
+        self.enforce_permission()
+        unit = SerializedUnit.objects.select_related("version__product", "production_plan").filter(serial_number=serial_number).first()
+        if unit is None:
+            raise NotFound("Unidad no encontrada.")
+        route, step = current_route_step_for(unit)
+        return Response({"serial_number": unit.serial_number, "current_step": _step_payload(route, step)})
+
+
+class StationEventCreateView(MESAPIView):
+    required_permission = API_PERMISSIONS["register_station_events"]
 
     def post(self, request):
-        if not request.user.has_perm("assembly.add_equipmentinboundevent"):
-            raise PermissionDenied("No tiene permiso para registrar eventos de equipos.")
+        self.enforce_permission()
+        serializer = StationEventSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            event, created = record_station_event(actor=request.user, **serializer.validated_data)
+        except ValueError as error:
+            raise ValidationError({"detail": str(error)})
+        return Response(
+            {"id": event.pk, "unit_serial_number": event.unit.serial_number, "event_type": event.event_type, "created": created},
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
 
+
+class InstalledComponentCreateAPIView(MESAPIView):
+    required_permission = API_PERMISSIONS["install_components"]
+
+    def post(self, request):
+        self.enforce_permission()
+        serializer = InstalledComponentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            component = install_component(actor=request.user, **serializer.validated_data)
+        except (ValueError, DjangoValidationError) as error:
+            raise ValidationError({"detail": _error_text(error)})
+        return Response(
+            {"id": component.pk, "unit_serial_number": component.unit.serial_number, "part_code": component.part_code},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class QualityGateDecisionView(MESAPIView):
+    required_permission = API_PERMISSIONS["review_quality"]
+
+    def post(self, request, pk):
+        self.enforce_permission()
+        serializer = QualityDecisionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            gate = review_quality_gate(actor=request.user, quality_gate_id=pk, **serializer.validated_data)
+        except ValueError as error:
+            raise ValidationError({"detail": str(error)})
+        return Response({"id": gate.pk, "unit_serial_number": gate.unit.serial_number, "status": gate.status})
+
+
+class EquipmentEventIngestView(MESAPIView):
+    required_permission = API_PERMISSIONS["receive_equipment_events"]
+
+    def post(self, request):
+        self.enforce_permission()
         serializer = EquipmentEventSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-        inbound_event, created = process_equipment_event(actor=request.user, **data)
+        inbound_event, created = process_equipment_event(actor=request.user, **serializer.validated_data)
         response_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
         if created and inbound_event.status == EquipmentInboundEventStatus.REJECTED:
             response_status = status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -43,3 +209,29 @@ class EquipmentEventIngestView(APIView):
             },
             status=response_status,
         )
+
+
+class EquipmentEventDetailView(MESAPIView):
+    required_permission = API_PERMISSIONS["view_equipment_events"]
+
+    def get(self, request, external_id):
+        self.enforce_permission()
+        inbound_event = EquipmentInboundEvent.objects.select_related("equipment", "station", "unit", "operator", "station_event").filter(
+            external_id=external_id
+        ).first()
+        if inbound_event is None:
+            raise NotFound("Evento de equipo no encontrado.")
+        return Response(
+            {
+                "external_id": inbound_event.external_id,
+                "status": inbound_event.status,
+                "detail": inbound_event.result_detail,
+                "equipment_code": inbound_event.equipment_code,
+                "station_code": inbound_event.station.code if inbound_event.station_id else "",
+                "unit_serial_number": inbound_event.unit_serial_number,
+                "station_event_id": inbound_event.station_event_id,
+                "processed_at": inbound_event.processed_at,
+            }
+        )
+def _error_text(error):
+    return "; ".join(error.messages) if hasattr(error, "messages") else str(error)

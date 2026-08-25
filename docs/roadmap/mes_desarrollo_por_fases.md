@@ -215,6 +215,8 @@ Entregables:
 
 ## Fase 9 - API MES formal
 
+Estado: implementacion inicial.
+
 Objetivo: estabilizar contratos para terminales, apps y recolectores.
 
 Entregables:

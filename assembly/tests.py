@@ -974,6 +974,113 @@ class SerializedUnitTests(TenantTestCase):
         self.assertNotContains(response, "LINE-2 - Linea secundaria")
         self.assertContains(response, 'id="plant-dashboard"', html=False)
 
+    def test_mes_api_reads_unit_and_current_step_with_jwt(self):
+        unit = self.create_unit("SER-API-001")
+        station, _route, _step = self.create_station_route_step()
+        client = APIClient(HTTP_HOST=self.get_test_tenant_domain())
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(self.user)}")
+
+        detail = client.get(f"/api/assembly/v1/units/{unit.serial_number}/")
+        current_step = client.get(f"/api/assembly/v1/units/{unit.serial_number}/current-step/")
+
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(detail.data["product"]["code"], self.product.code)
+        self.assertEqual(detail.data["current_step"]["station"]["code"], station.code)
+        self.assertEqual(current_step.status_code, 200)
+        self.assertEqual(current_step.data["current_step"]["name"], "Ingreso a linea")
+
+    def test_mes_api_registers_station_event_idempotently_with_scope(self):
+        self.grant_permissions("add_unitstationevent")
+        unit = self.create_unit("SER-API-002")
+        station, _route, _step = self.create_station_route_step()
+        client = APIClient(HTTP_HOST=self.get_test_tenant_domain())
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(self.user)}")
+        payload = {
+            "unit_serial_number": unit.serial_number,
+            "station_code": station.code,
+            "event_type": StationEventType.STARTED,
+            "external_reference": "terminal-002",
+        }
+
+        first = client.post("/api/assembly/v1/station-events/", payload, format="json")
+        second = client.post("/api/assembly/v1/station-events/", payload, format="json")
+
+        self.assertEqual(first.status_code, 201)
+        self.assertTrue(first.data["created"])
+        self.assertEqual(second.status_code, 200)
+        self.assertFalse(second.data["created"])
+        self.assertEqual(UnitStationEvent.objects.filter(external_reference="terminal-002").count(), 1)
+
+    def test_mes_api_installs_required_component(self):
+        self.grant_permissions("add_installedcomponent")
+        unit = self.create_unit("SER-API-003")
+        _station, _route, step = self.create_station_route_step()
+        requirement = RouteStepComponentRequirement.objects.create(
+            route_step=step,
+            part_code="API-PART-001",
+            part_name="Componente API",
+            traceability=ComponentTraceability.SERIAL,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        client = APIClient(HTTP_HOST=self.get_test_tenant_domain())
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(self.user)}")
+
+        response = client.post(
+            "/api/assembly/v1/components/",
+            {
+                "unit_serial_number": unit.serial_number,
+                "requirement_id": requirement.pk,
+                "serial_number": "API-COMP-SER-001",
+                "quantity": "1.0000",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["part_code"], requirement.part_code)
+        self.assertTrue(InstalledComponent.objects.filter(unit=unit, requirement=requirement).exists())
+
+    def test_mes_api_reviews_quality_gate(self):
+        self.grant_permissions("change_qualitygate")
+        unit = self.create_unit("SER-API-004", UnitStatus.QUALITY_HOLD)
+        station, _route, step = self.create_station_route_step()
+        gate = QualityGate.objects.create(
+            unit=unit,
+            station=station,
+            route_step=step,
+            status=QualityGateStatus.PENDING,
+            is_blocking=True,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        client = APIClient(HTTP_HOST=self.get_test_tenant_domain())
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(self.user)}")
+
+        response = client.post(
+            f"/api/assembly/v1/quality-gates/{gate.pk}/decision/",
+            {"status": QualityGateStatus.PASSED, "evidence_reference": "API-QA-001"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        gate.refresh_from_db()
+        self.assertEqual(gate.status, QualityGateStatus.PASSED)
+        self.assertEqual(gate.inspected_by, self.user)
+
+    def test_mes_api_exposes_integration_permissions(self):
+        self.grant_permissions("add_unitstationevent", "add_installedcomponent")
+        client = APIClient(HTTP_HOST=self.get_test_tenant_domain())
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(self.user)}")
+
+        response = client.get("/api/assembly/v1/integration/profile/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["permissions"]["consult_units"])
+        self.assertTrue(response.data["permissions"]["register_station_events"])
+        self.assertTrue(response.data["permissions"]["install_components"])
+        self.assertFalse(response.data["permissions"]["review_quality"])
+
     def test_production_module_screens_render_with_permissions(self):
         unit = self.create_unit("SER-0500")
         station, _route, step = self.create_station_route_step()

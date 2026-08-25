@@ -26,6 +26,7 @@ urlpatterns = [
     path("usuarios/roles/<int:pk>/eliminar/", tenant_views.TenantRoleDeleteView.as_view(), name="tenant_role_delete"),
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("api/assembly/v1/", include(("assembly.api_urls", "assembly_api_v1"), namespace="assembly_api_v1")),
     path("api/assembly/", include(("assembly.api_urls", "assembly_api"), namespace="assembly_api")),
     path("accounts/login/", auth_views.LoginView.as_view(template_name="auth/login.html"), name="login"),
     path("accounts/logout/", auth_views.LogoutView.as_view(), name="logout"),
