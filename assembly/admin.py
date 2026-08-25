@@ -6,6 +6,7 @@ from .models import (
     AssemblyRoute,
     AssemblyRouteStep,
     AssemblyStation,
+    EquipmentInboundEvent,
     InstalledComponent,
     ProductVersion,
     ProductionPlan,
@@ -116,6 +117,16 @@ class UnitStationEventAdmin(AuditAdminMixin, admin.ModelAdmin):
     search_fields = ("unit__serial_number", "station__code", "external_reference")
     list_filter = ("event_type", "source", "station")
     autocomplete_fields = ("unit", "station", "route_step", "operator")
+
+
+@admin.register(EquipmentInboundEvent)
+class EquipmentInboundEventAdmin(AuditAdminMixin, admin.ModelAdmin):
+    list_display = ("external_id", "equipment_code", "unit_serial_number", "event_type", "status", "received_at")
+    search_fields = ("external_id", "equipment_code", "unit_serial_number", "operator_username")
+    list_filter = ("status", "event_type")
+    autocomplete_fields = ("station", "unit", "operator", "station_event")
+    raw_id_fields = ("equipment",)
+    readonly_fields = ("received_at", "processed_at", "payload", "result_detail")
 
 
 @admin.register(InstalledComponent)

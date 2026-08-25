@@ -35,6 +35,12 @@ class StationEventSource(models.TextChoices):
     EQUIPMENT = "EQUIPMENT", "Equipo"
 
 
+class EquipmentInboundEventStatus(models.TextChoices):
+    RECEIVED = "RECEIVED", "Recibido"
+    PROCESSED = "PROCESSED", "Procesado"
+    REJECTED = "REJECTED", "Rechazado"
+
+
 class QualityGateStatus(models.TextChoices):
     PENDING = "PENDING", "Pendiente"
     PASSED = "PASSED", "Aprobado"
@@ -808,6 +814,81 @@ class UnitStationEvent(AuditModel):
             raise ValidationError({"route_step": "El paso de ruta no pertenece a la estacion seleccionada."})
         if self.route_step_id and self.unit_id and self.route_step.route.version_id != self.unit.version_id:
             raise ValidationError({"route_step": "La ruta del paso no corresponde a la version de la unidad."})
+
+class EquipmentInboundEvent(AuditModel):
+    """Mensaje recibido desde un recolector externo, procesado una sola vez."""
+
+    external_id = models.CharField("Identificador externo", max_length=120, unique=True)
+    equipment_code = models.CharField("Codigo de equipo recibido", max_length=50)
+    station_code = models.CharField("Codigo de estacion recibido", max_length=50, blank=True)
+    unit_serial_number = models.CharField("Serie de unidad recibida", max_length=120)
+    operator_username = models.CharField("Operario recibido", max_length=150)
+    event_type = models.CharField("Tipo de evento", max_length=20, choices=StationEventType.choices)
+    event_at = models.DateTimeField("Fecha/hora informada", default=timezone.now, db_index=True)
+    received_at = models.DateTimeField("Fecha/hora de recepcion", auto_now_add=True)
+    payload = models.JSONField("Carga original", default=dict, blank=True)
+    status = models.CharField(
+        "Estado de procesamiento",
+        max_length=20,
+        choices=EquipmentInboundEventStatus.choices,
+        default=EquipmentInboundEventStatus.RECEIVED,
+        db_index=True,
+    )
+    result_detail = models.TextField("Detalle de resultado", blank=True)
+    processed_at = models.DateTimeField("Fecha/hora de procesamiento", null=True, blank=True)
+    equipment = models.ForeignKey(
+        "core.EquipmentIntegration",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="inbound_assembly_events",
+        verbose_name="Equipo resuelto",
+    )
+    station = models.ForeignKey(
+        AssemblyStation,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="inbound_equipment_events",
+        verbose_name="Estacion resuelta",
+    )
+    unit = models.ForeignKey(
+        SerializedUnit,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="inbound_equipment_events",
+        verbose_name="Unidad resuelta",
+    )
+    operator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="inbound_assembly_events",
+        verbose_name="Operario resuelto",
+    )
+    station_event = models.OneToOneField(
+        UnitStationEvent,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="inbound_equipment_event",
+        verbose_name="Evento de estacion creado",
+    )
+
+    class Meta:
+        ordering = ["-received_at", "-id"]
+        verbose_name = "Evento recibido de equipo"
+        verbose_name_plural = "Eventos recibidos de equipos"
+        indexes = [
+            models.Index(fields=["status", "received_at"], name="equip_inbound_status_time_idx"),
+            models.Index(fields=["equipment_code", "event_at"], name="equip_inbound_code_time_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.external_id} / {self.equipment_code} / {self.get_status_display()}"
+
 
 class InstalledComponent(AuditModel):
     unit = models.ForeignKey(
