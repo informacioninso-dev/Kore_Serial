@@ -51,7 +51,10 @@ class SettingsDashboardView(LoginRequiredMixin, TenantAdminRequiredMixin, Templa
             AssemblyRoute,
             AssemblyRouteStep,
             AssemblyStation,
+            Plant,
+            PlantArea,
             ProductVersion,
+            RouteStepParameter,
             RouteStepComponentRequirement,
         )
 
@@ -69,10 +72,13 @@ class SettingsDashboardView(LoginRequiredMixin, TenantAdminRequiredMixin, Templa
                 "location_count": Location.objects.count(),
                 "product_count": AssembledProduct.objects.count(),
                 "version_count": ProductVersion.objects.count(),
+                "plant_count": Plant.objects.count(),
+                "area_count": PlantArea.objects.count(),
                 "line_count": AssemblyLine.objects.count(),
                 "station_count": AssemblyStation.objects.count(),
                 "route_count": AssemblyRoute.objects.count(),
                 "step_count": AssemblyRouteStep.objects.count(),
+                "parameter_count": RouteStepParameter.objects.count(),
                 "requirement_count": RouteStepComponentRequirement.objects.count(),
                 "equipment_count": EquipmentIntegration.objects.count(),
             }

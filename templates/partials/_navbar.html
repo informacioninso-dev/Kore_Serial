@@ -13,14 +13,15 @@
     <nav class="hidden md:flex items-center gap-6">
       {% if request.user.is_authenticated %}
         {% with ns=request.resolver_match.namespace %}
+          <a href="{% url 'dashboard' %}" class="kore-topbar-link {% if not ns and request.resolver_match.url_name == 'dashboard' %}font-semibold{% endif %}">Inicio</a>
           {% if modules.production %}
-            <a href="{% url 'assembly:index' %}" class="kore-topbar-link {% if ns == 'assembly' %}font-semibold{% endif %}">Producción</a>
+            <a href="{% url 'assembly:index' %}" class="kore-topbar-link {% if is_production_area %}font-semibold{% endif %}">Planta</a>
           {% endif %}
           {% if is_tenant_admin %}
             <a href="{% url 'tenant_users' %}" class="kore-topbar-link {% if request.resolver_match.url_name == 'tenant_users' %}font-semibold{% endif %}">Usuarios</a>
           {% endif %}
           {% if modules.core %}
-            <a href="{% url 'core:settings' %}" class="kore-topbar-link {% if ns == 'core' %}font-semibold{% endif %}">Configuración</a>
+            <a href="{% url 'core:settings' %}" class="kore-topbar-link {% if is_configuration_area %}font-semibold{% endif %}">Configuracion</a>
           {% endif %}
         {% endwith %}
         <span class="kore-topbar-meta">Hola, {{ request.user.get_username }}</span>
@@ -92,9 +93,9 @@
       </a>
       {% endif %}
       {% if modules.production %}
-      <a href="{% url 'assembly:unit_list' %}"
-         class="{% if ns == 'assembly' %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
-        Producción
+      <a href="{% url 'assembly:index' %}"
+         class="{% if is_production_area %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
+        Planta
       </a>
       {% endif %}
       {% if modules.sales %}
@@ -123,8 +124,8 @@
       {% endif %}
       {% if modules.core %}
       <a href="{% url 'core:settings' %}"
-         class="{% if ns == 'core' %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
-        Configuración
+         class="{% if is_configuration_area %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
+        Configuracion
       </a>
       {% endif %}
     {% endwith %}

@@ -1,21 +1,33 @@
 from django.contrib import admin
 
 from .models import (
+    AndonSignal,
     AssembledProduct,
     AssemblyLine,
     AssemblyRoute,
     AssemblyRouteStep,
     AssemblyStation,
     EquipmentInboundEvent,
+    ExternalMaterialKit,
     InstalledComponent,
+    LineBalanceStudy,
+    Plant,
+    PlantArea,
+    ProductionMeasurement,
+    ProductionOrder,
+    ModelMixPlan,
+    ModelMixPlanItem,
     ProductVersion,
+    ProductionDowntime,
     ProductionPlan,
     ProductionQueueItem,
     QualityGate,
     ReleaseApproval,
     ReworkOrder,
     RouteStepComponentRequirement,
+    RouteStepParameter,
     SerializedUnit,
+    StationOfflineEvent,
     UnitStationEvent,
 )
 
@@ -42,27 +54,51 @@ class ProductVersionAdmin(AuditAdminMixin, admin.ModelAdmin):
     list_filter = ("is_active",)
 
 
+@admin.register(Plant)
+class PlantAdmin(AuditAdminMixin, admin.ModelAdmin):
+    list_display = ("code", "name", "address", "is_active")
+    search_fields = ("code", "name", "address")
+    list_filter = ("is_active",)
+
+
+@admin.register(PlantArea)
+class PlantAreaAdmin(AuditAdminMixin, admin.ModelAdmin):
+    list_display = ("code", "name", "plant", "is_active")
+    search_fields = ("code", "name", "plant__code", "plant__name")
+    list_filter = ("plant", "is_active")
+    autocomplete_fields = ("plant",)
+
+
+@admin.register(ProductionOrder)
+class ProductionOrderAdmin(AuditAdminMixin, admin.ModelAdmin):
+    list_display = ("code", "product", "version", "plant", "target_quantity", "due_date", "status", "priority")
+    search_fields = ("code", "external_reference", "product__code", "product__name", "version__code", "plant__code")
+    list_filter = ("status", "priority", "plant", "due_date")
+    autocomplete_fields = ("product", "version", "plant")
+
+
 @admin.register(SerializedUnit)
 class SerializedUnitAdmin(AuditAdminMixin, admin.ModelAdmin):
-    list_display = ("serial_number", "version", "production_plan", "status", "created_at")
-    search_fields = ("serial_number", "version__code", "version__product__code", "version__product__name", "production_plan__code")
-    list_filter = ("status", "production_plan")
-    autocomplete_fields = ("production_plan",)
+    list_display = ("serial_number", "production_order", "version", "production_plan", "status", "created_at")
+    search_fields = ("serial_number", "production_order__code", "version__code", "version__product__code", "version__product__name", "production_plan__code")
+    list_filter = ("status", "production_order", "production_plan")
+    autocomplete_fields = ("production_order", "production_plan")
 
 
 @admin.register(AssemblyLine)
 class AssemblyLineAdmin(AuditAdminMixin, admin.ModelAdmin):
-    list_display = ("code", "name", "takt_time_seconds", "is_active")
-    search_fields = ("code", "name")
-    list_filter = ("is_active",)
+    list_display = ("code", "name", "area", "takt_time_seconds", "is_active")
+    search_fields = ("code", "name", "area__code", "area__plant__code")
+    list_filter = ("area", "is_active")
+    autocomplete_fields = ("area",)
 
 
 @admin.register(ProductionPlan)
 class ProductionPlanAdmin(AuditAdminMixin, admin.ModelAdmin):
-    list_display = ("code", "version", "line", "planned_date", "shift", "target_quantity", "status", "priority")
-    search_fields = ("code", "version__code", "version__product__code", "line__code", "line__name")
+    list_display = ("code", "production_order", "version", "line", "planned_date", "shift", "target_quantity", "status", "priority")
+    search_fields = ("code", "production_order__code", "version__code", "version__product__code", "line__code", "line__name")
     list_filter = ("status", "priority", "line", "planned_date")
-    autocomplete_fields = ("version", "line")
+    autocomplete_fields = ("production_order", "version", "line")
 
 
 @admin.register(ProductionQueueItem)
@@ -71,6 +107,71 @@ class ProductionQueueItemAdmin(AuditAdminMixin, admin.ModelAdmin):
     search_fields = ("unit__serial_number", "production_plan__code", "line__code", "route__code")
     list_filter = ("status", "priority", "line")
     autocomplete_fields = ("production_plan", "unit", "line", "route")
+
+
+@admin.register(LineBalanceStudy)
+class LineBalanceStudyAdmin(AuditAdminMixin, admin.ModelAdmin):
+    list_display = ("code", "line", "version", "production_plan", "status", "generated_at")
+    search_fields = ("code", "line__code", "line__name", "version__code", "route__code", "production_plan__code")
+    list_filter = ("status", "line")
+    autocomplete_fields = ("line", "version", "route", "production_plan")
+    readonly_fields = ("generated_at", "snapshot", "recommendations")
+
+
+class ModelMixPlanItemInline(admin.TabularInline):
+    model = ModelMixPlanItem
+    extra = 0
+    autocomplete_fields = ("version", "production_plan")
+
+
+@admin.register(ModelMixPlan)
+class ModelMixPlanAdmin(AuditAdminMixin, admin.ModelAdmin):
+    list_display = ("code", "line", "planned_date", "shift", "status")
+    search_fields = ("code", "line__code", "line__name", "shift")
+    list_filter = ("status", "line", "planned_date")
+    autocomplete_fields = ("line",)
+    inlines = (ModelMixPlanItemInline,)
+
+
+@admin.register(ModelMixPlanItem)
+class ModelMixPlanItemAdmin(AuditAdminMixin, admin.ModelAdmin):
+    list_display = ("mix_plan", "version", "planned_quantity", "sequence_bias", "priority", "production_plan")
+    search_fields = ("mix_plan__code", "version__code", "version__product__code", "production_plan__code")
+    list_filter = ("priority",)
+    autocomplete_fields = ("mix_plan", "version", "production_plan")
+
+
+@admin.register(ExternalMaterialKit)
+class ExternalMaterialKitAdmin(AuditAdminMixin, admin.ModelAdmin):
+    list_display = ("code", "external_system", "version", "production_plan", "status", "expected_quantity", "received_quantity")
+    search_fields = ("code", "external_reference", "container_code", "lot_number", "version__code", "production_plan__code")
+    list_filter = ("status", "external_system")
+    autocomplete_fields = ("version", "production_plan", "line")
+
+
+@admin.register(AndonSignal)
+class AndonSignalAdmin(AuditAdminMixin, admin.ModelAdmin):
+    list_display = ("code", "line", "station", "severity", "status", "opened_at", "resolved_at")
+    search_fields = ("code", "title", "description", "line__code", "station__code", "unit__serial_number")
+    list_filter = ("status", "severity", "line")
+    autocomplete_fields = ("line", "station", "unit", "production_plan", "opened_by", "acknowledged_by", "resolved_by")
+
+
+@admin.register(ProductionDowntime)
+class ProductionDowntimeAdmin(AuditAdminMixin, admin.ModelAdmin):
+    list_display = ("code", "line", "station", "cause_category", "cause_code", "status", "started_at", "ended_at")
+    search_fields = ("code", "cause_code", "cause_description", "line__code", "station__code", "unit__serial_number")
+    list_filter = ("status", "cause_category", "line")
+    autocomplete_fields = ("line", "station", "unit", "production_plan", "andon_signal", "opened_by", "closed_by")
+
+
+@admin.register(StationOfflineEvent)
+class StationOfflineEventAdmin(AuditAdminMixin, admin.ModelAdmin):
+    list_display = ("external_id", "station", "unit_serial_number", "event_type", "status", "captured_at", "synced_at")
+    search_fields = ("external_id", "station__code", "unit_serial_number", "operator_username", "result_detail")
+    list_filter = ("status", "event_type", "station")
+    autocomplete_fields = ("station", "station_event")
+    readonly_fields = ("result_detail", "synced_at", "station_event")
 
 
 @admin.register(AssemblyStation)
@@ -103,6 +204,14 @@ class AssemblyRouteStepAdmin(AuditAdminMixin, admin.ModelAdmin):
     autocomplete_fields = ("route", "station")
 
 
+@admin.register(RouteStepParameter)
+class RouteStepParameterAdmin(AuditAdminMixin, admin.ModelAdmin):
+    list_display = ("route_step", "code", "name", "parameter_type", "unit", "origin", "is_required", "is_quality_critical", "is_active")
+    search_fields = ("code", "name", "route_step__name", "route_step__route__code", "route_step__station__code")
+    list_filter = ("parameter_type", "origin", "is_required", "is_quality_critical", "is_active")
+    autocomplete_fields = ("route_step",)
+
+
 @admin.register(RouteStepComponentRequirement)
 class RouteStepComponentRequirementAdmin(AuditAdminMixin, admin.ModelAdmin):
     list_display = ("route_step", "part_code", "part_name", "quantity_required", "traceability", "is_critical", "is_active")
@@ -127,6 +236,14 @@ class EquipmentInboundEventAdmin(AuditAdminMixin, admin.ModelAdmin):
     autocomplete_fields = ("station", "unit", "operator", "station_event")
     raw_id_fields = ("equipment",)
     readonly_fields = ("received_at", "processed_at", "payload", "result_detail")
+
+
+@admin.register(ProductionMeasurement)
+class ProductionMeasurementAdmin(AuditAdminMixin, admin.ModelAdmin):
+    list_display = ("unit", "station", "code", "value", "unit_label", "result", "origin", "measured_at")
+    search_fields = ("unit__serial_number", "station__code", "code", "name", "evidence_reference")
+    list_filter = ("result", "origin", "station")
+    autocomplete_fields = ("unit", "station", "route_step", "parameter", "station_event", "measured_by")
 
 
 @admin.register(InstalledComponent)

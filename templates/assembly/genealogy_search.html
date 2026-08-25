@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Genealogia | Kore Serial{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-3">
+  {% include "assembly/_nav.html" with nav_key=nav_key %}
+
+  <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold text-gray-900">Genealogia</h1>
+      <p class="mt-1 text-sm text-gray-600">Busca un serial, lote o codigo de parte y encuentra las unidades impactadas.</p>
+    </div>
+    <a href="{% url 'assembly:component_list' %}" class="inline-flex h-9 items-center rounded-lg border px-4 text-sm font-medium text-gray-700 hover:bg-gray-50">Componentes</a>
+  </div>
+
+  <form method="get" class="mb-4 flex flex-wrap items-end gap-3 rounded-lg border bg-white p-3">
+    <label class="min-w-56 flex-1 text-xs font-medium text-gray-700">
+      Serial, lote o parte
+      <input type="search" name="q" value="{{ query }}" placeholder="Ej: HAR-0826, ENG-00128, ECU-0377" class="mt-1 h-9 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200">
+    </label>
+    <button type="submit" class="h-9 rounded-lg bg-orange-600 px-4 text-sm font-semibold text-white hover:bg-orange-700">Buscar</button>
+    <a href="{% url 'assembly:genealogy' %}" class="inline-flex h-9 items-center rounded-lg border px-4 text-sm text-gray-700 hover:bg-gray-50">Limpiar</a>
+  </form>
+
+  <section class="mb-4 grid gap-3 md:grid-cols-3">
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Coincidencias</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ component_count }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Unidades impactadas</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ unit_count }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Consulta</p>
+      <p class="mt-2 text-sm font-semibold text-gray-900">{{ query|default:"Pendiente" }}</p>
+    </div>
+  </section>
+
+  {% if query %}
+    <section class="mb-4 rounded-lg border bg-white">
+      <div class="border-b px-4 py-3">
+        <h2 class="text-sm font-semibold text-gray-900">Unidades encontradas</h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">
+            <tr>
+              <th class="px-4 py-3">Unidad</th>
+              <th class="px-4 py-3">OP</th>
+              <th class="px-4 py-3">Version</th>
+              <th class="px-4 py-3">Plan</th>
+              <th class="px-4 py-3">Estado</th>
+              <th class="px-4 py-3 text-right">Accion</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            {% for unit in impacted_units %}
+              <tr>
+                <td class="px-4 py-3 font-medium text-gray-900">{{ unit.serial_number }}</td>
+                <td class="px-4 py-3 text-gray-700">{{ unit.production_order.code|default:"-" }}</td>
+                <td class="px-4 py-3 text-gray-700">{{ unit.version.product.code }} / {{ unit.version.code }}</td>
+                <td class="px-4 py-3 text-gray-700">{{ unit.production_plan.code|default:"-" }}</td>
+                <td class="px-4 py-3 text-gray-700">{{ unit.get_status_display }}</td>
+                <td class="px-4 py-3 text-right">
+                  <a href="{% url 'assembly:unit_detail' unit.pk %}" class="inline-flex rounded-lg border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">Expediente</a>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="6" class="px-4 py-5 text-center text-sm text-gray-500">Sin unidades para esta busqueda.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="rounded-lg border bg-white">
+      <div class="border-b px-4 py-3">
+        <h2 class="text-sm font-semibold text-gray-900">Componentes coincidentes</h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">
+            <tr>
+              <th class="px-4 py-3">Parte</th>
+              <th class="px-4 py-3">Serial</th>
+              <th class="px-4 py-3">Lote</th>
+              <th class="px-4 py-3">Unidad</th>
+              <th class="px-4 py-3">Estacion</th>
+              <th class="px-4 py-3">Instalacion</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            {% for component in components %}
+              <tr>
+                <td class="px-4 py-3 text-gray-700">
+                  <span class="font-medium text-gray-900">{{ component.part_code }}</span>
+                  <span class="block text-xs text-gray-500">{{ component.part_name }}</span>
+                </td>
+                <td class="px-4 py-3 text-gray-700">{{ component.serial_number|default:"-" }}</td>
+                <td class="px-4 py-3 text-gray-700">{{ component.lot_number|default:"-" }}</td>
+                <td class="px-4 py-3 font-medium text-gray-900">{{ component.unit.serial_number }}</td>
+                <td class="px-4 py-3 text-gray-700">{{ component.station.code|default:"-" }}</td>
+                <td class="px-4 py-3 text-gray-700">{{ component.installed_at|date:"d/m/Y H:i" }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="6" class="px-4 py-5 text-center text-sm text-gray-500">Sin componentes coincidentes.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {% else %}
+    <div class="rounded-lg border border-dashed bg-white p-6 text-center text-sm text-gray-500">
+      Ingresa un serial, lote o codigo de parte para reconstruir genealogia.
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

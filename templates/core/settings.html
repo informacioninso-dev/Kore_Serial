@@ -21,6 +21,10 @@
       <p class="mt-2 text-2xl font-semibold text-gray-900">{{ product_count }}</p>
     </div>
     <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Plantas</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ plant_count }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
       <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Lineas</p>
       <p class="mt-2 text-2xl font-semibold text-gray-900">{{ line_count }}</p>
     </div>
@@ -67,6 +71,18 @@
           <p class="mt-1 text-sm text-gray-600">{{ version_count }} configuraciones concretas de producto.</p>
         </a>
       {% endif %}
+      {% if is_tenant_admin or perms.assembly.view_plant %}
+        <a href="{% url 'assembly:plant_list' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50">
+          <p class="font-semibold text-gray-900">Plantas</p>
+          <p class="mt-1 text-sm text-gray-600">{{ plant_count }} sitios fisicos de produccion.</p>
+        </a>
+      {% endif %}
+      {% if is_tenant_admin or perms.assembly.view_plantarea %}
+        <a href="{% url 'assembly:area_list' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50">
+          <p class="font-semibold text-gray-900">Areas</p>
+          <p class="mt-1 text-sm text-gray-600">{{ area_count }} areas productivas dentro de planta.</p>
+        </a>
+      {% endif %}
       {% if is_tenant_admin or perms.assembly.view_assemblyline %}
         <a href="{% url 'assembly:line_list' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50">
           <p class="font-semibold text-gray-900">Lineas</p>
@@ -89,6 +105,12 @@
         <a href="{% url 'assembly:step_list' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50">
           <p class="font-semibold text-gray-900">Pasos</p>
           <p class="mt-1 text-sm text-gray-600">{{ step_count }} pasos de ruta por estacion.</p>
+        </a>
+      {% endif %}
+      {% if is_tenant_admin or perms.assembly.view_routestepparameter %}
+        <a href="{% url 'assembly:parameter_list' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50">
+          <p class="font-semibold text-gray-900">Parametros</p>
+          <p class="mt-1 text-sm text-gray-600">{{ parameter_count }} variables esperadas por operacion.</p>
         </a>
       {% endif %}
       {% if is_tenant_admin or perms.assembly.view_routestepcomponentrequirement %}

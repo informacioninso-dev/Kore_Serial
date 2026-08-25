@@ -160,18 +160,39 @@ class Command(BaseCommand):
 
     def _populate_tenant(self, tenant, admin, operator, quality):
         from assembly.models import (
+            AndonSeverity,
+            AndonSignal,
+            AndonStatus,
             AssembledProduct,
             AssemblyLine,
             AssemblyRoute,
             AssemblyRouteStep,
             AssemblyStation,
             ComponentTraceability,
+            DowntimeCauseCategory,
+            DowntimeStatus,
+            ExternalMaterialKit,
+            ExternalMaterialKitStatus,
             InstalledComponent,
+            LineBalanceStudy,
+            ModelMixPlan,
+            ModelMixPlanItem,
+            ModelMixPlanStatus,
+            Plant,
+            PlantArea,
             ProductVersion,
+            ProductiveParameterOrigin,
+            ProductiveParameterType,
+            ProductionDowntime,
+            ProductionMeasurement,
+            ProductionOrder,
+            ProductionOrderStatus,
             ProductionPlan,
             ProductionPlanPriority,
             ProductionPlanStatus,
             ProductionQueueItem,
+            QualityDefectClassification,
+            QualityDefectSeverity,
             QualityGate,
             QualityGateStatus,
             ReleaseApproval,
@@ -179,7 +200,10 @@ class Command(BaseCommand):
             ReworkOrder,
             ReworkStatus,
             RouteStepComponentRequirement,
+            RouteStepParameter,
             SerializedUnit,
+            StationOfflineEvent,
+            StationOfflineEventStatus,
             StationEventSource,
             StationEventType,
             UnitStationEvent,
@@ -399,9 +423,40 @@ class Command(BaseCommand):
                 "updated_by": admin,
             },
         )
+        fwd_version, _ = ProductVersion.objects.update_or_create(
+            product=product,
+            code="2026-FWD",
+            defaults={
+                "name": "Version FWD 2026",
+                "description": "Version demo para validar planificacion de modelos mixtos.",
+                "is_active": True,
+                "updated_by": admin,
+            },
+        )
+        plant, _ = Plant.objects.update_or_create(
+            code="PLANTA-CIAUTO",
+            defaults={
+                "name": "Planta demo de ensamblaje",
+                "description": "Planta base para validar el flujo MES de Kore Serial.",
+                "address": "Zona industrial demo",
+                "is_active": True,
+                "updated_by": admin,
+            },
+        )
+        area, _ = PlantArea.objects.update_or_create(
+            plant=plant,
+            code="ENSAMBLE",
+            defaults={
+                "name": "Area de ensamblaje",
+                "description": "Area operativa de linea principal CKD.",
+                "is_active": True,
+                "updated_by": admin,
+            },
+        )
         line, _ = AssemblyLine.objects.update_or_create(
             code="LINEA-01",
             defaults={
+                "area": area,
                 "name": "Linea principal CKD",
                 "description": "Linea demo para secuencia de ensamblaje discreto.",
                 "takt_time_seconds": 900,
@@ -435,6 +490,23 @@ class Command(BaseCommand):
             station.authorized_operators.set([operator, quality])
             stations[code] = station
 
+        production_order, _ = ProductionOrder.objects.update_or_create(
+            code="OP-CKD-2026-001",
+            defaults={
+                "product": product,
+                "version": version,
+                "plant": plant,
+                "target_quantity": 6,
+                "due_date": today,
+                "status": ProductionOrderStatus.IN_EXECUTION,
+                "priority": ProductionPlanPriority.HIGH,
+                "external_reference": "B22-OP-CKD-2026-001",
+                "notes": "Orden demo que agrupa planes, seriales, mediciones y liberacion.",
+                "created_by": admin,
+                "updated_by": admin,
+            },
+        )
+
         route, _ = AssemblyRoute.objects.update_or_create(
             version=version,
             code="RUTA-CKD",
@@ -451,14 +523,80 @@ class Command(BaseCommand):
         )
 
         step_specs = [
-            (10, "Validar kit CKD", "ST-010", 600, True, False, "Escanear kit y validar documentacion de recepcion."),
-            (20, "Montaje de chasis", "ST-020", 1200, True, True, "Registrar torques criticos contra numero de serie."),
-            (30, "Conexion electrica", "ST-030", 900, True, False, "Instalar arnes y registrar numero de lote."),
-            (40, "Prueba final EOL", "ST-040", 1500, False, True, "Ejecutar banco de prueba y adjuntar evidencia."),
-            (50, "Etiquetado y liberacion", "ST-050", 600, False, True, "Imprimir etiqueta, cerrar expediente y liberar."),
+            (
+                10,
+                "Validar kit CKD",
+                "ST-010",
+                600,
+                True,
+                False,
+                "Escanear kit y validar documentacion de recepcion.",
+                "Mantener area despejada antes de abrir contenedor.",
+                "Kit corresponde a OP, version y cantidad esperada.",
+                "WI-CKD-010",
+            ),
+            (
+                20,
+                "Montaje de chasis",
+                "ST-020",
+                1200,
+                True,
+                True,
+                "Registrar torques criticos contra numero de serie.",
+                "Usar herramienta calibrada y bloqueo mecanico antes de torque.",
+                "Torque entre 120 y 140 Nm con evidencia asociada.",
+                "WI-CKD-020",
+            ),
+            (
+                30,
+                "Conexion electrica",
+                "ST-030",
+                900,
+                True,
+                False,
+                "Instalar arnes y registrar numero de lote.",
+                "Desenergizar circuito antes de conectar arnes principal.",
+                "PLC reporta continuidad y lote de arnes trazado.",
+                "WI-CKD-030",
+            ),
+            (
+                40,
+                "Prueba final EOL",
+                "ST-040",
+                1500,
+                False,
+                True,
+                "Ejecutar banco de prueba y adjuntar evidencia.",
+                "Aplicar protocolo EOL y no retirar unidad hasta terminar ciclo.",
+                "Resultado final mayor o igual a 95% y sin fallas bloqueantes.",
+                "EOL-PROG-SUV-2026",
+            ),
+            (
+                50,
+                "Etiquetado y liberacion",
+                "ST-050",
+                600,
+                False,
+                True,
+                "Imprimir etiqueta, cerrar expediente y liberar.",
+                "Verificar que la impresora no tenga consumibles sueltos.",
+                "Etiqueta legible y expediente completo antes de liberacion.",
+                "WI-CKD-050",
+            ),
         ]
         steps = {}
-        for sequence, name, station_code, duration, trace, quality_gate, instructions in step_specs:
+        for (
+            sequence,
+            name,
+            station_code,
+            duration,
+            trace,
+            quality_gate,
+            instructions,
+            safety_notes,
+            acceptance_criteria,
+            media_reference,
+        ) in step_specs:
             step, _ = AssemblyRouteStep.objects.update_or_create(
                 route=route,
                 sequence=sequence,
@@ -469,6 +607,9 @@ class Command(BaseCommand):
                     "requires_component_trace": trace,
                     "requires_quality_gate": quality_gate,
                     "instructions": instructions,
+                    "safety_notes": safety_notes,
+                    "acceptance_criteria": acceptance_criteria,
+                    "media_reference": media_reference,
                     "is_active": True,
                     "updated_by": admin,
                 },
@@ -498,6 +639,114 @@ class Command(BaseCommand):
             )
             requirements[part_code] = requirement
 
+        parameter_specs = [
+            (
+                "ST-010",
+                "KIT_QTY_OK",
+                "Cantidad de kit validada",
+                ProductiveParameterType.NUMERIC,
+                "kit",
+                "1",
+                "1.0000",
+                "1.0000",
+                ProductiveParameterOrigin.MANUAL,
+                True,
+                False,
+                "Debe coincidir con la OP antes de liberar la estacion.",
+            ),
+            (
+                "ST-020",
+                "TORQUE_CHS_01",
+                "Torque fijacion chasis",
+                ProductiveParameterType.NUMERIC,
+                "Nm",
+                "130",
+                "120.0000",
+                "140.0000",
+                ProductiveParameterOrigin.SENSOR,
+                True,
+                True,
+                "Medicion capturada desde torquimetro o collector.",
+            ),
+            (
+                "ST-030",
+                "PLC_CONTINUITY",
+                "Continuidad electrica",
+                ProductiveParameterType.BOOLEAN,
+                "",
+                "OK",
+                None,
+                None,
+                ProductiveParameterOrigin.PLC,
+                True,
+                True,
+                "Resultado logico del PLC de linea.",
+            ),
+            (
+                "ST-040",
+                "EOL_SCORE",
+                "Resultado banco EOL",
+                ProductiveParameterType.NUMERIC,
+                "%",
+                "98",
+                "95.0000",
+                "100.0000",
+                ProductiveParameterOrigin.MACHINE,
+                True,
+                True,
+                "Resultado minimo requerido para liberacion.",
+            ),
+            (
+                "ST-050",
+                "LABEL_READABLE",
+                "Etiqueta legible",
+                ProductiveParameterType.BOOLEAN,
+                "",
+                "SI",
+                None,
+                None,
+                ProductiveParameterOrigin.MANUAL,
+                True,
+                False,
+                "Confirmacion visual antes de cierre final.",
+            ),
+        ]
+        parameters = {}
+        for (
+            station_code,
+            code,
+            name,
+            parameter_type,
+            unit_label,
+            target_value,
+            min_value,
+            max_value,
+            origin,
+            required,
+            quality_critical,
+            notes,
+        ) in parameter_specs:
+            parameter, _ = RouteStepParameter.objects.update_or_create(
+                route_step=steps[station_code],
+                code=code,
+                defaults={
+                    "name": name,
+                    "parameter_type": parameter_type,
+                    "unit": unit_label,
+                    "target_value": target_value,
+                    "min_value": Decimal(min_value) if min_value is not None else None,
+                    "max_value": Decimal(max_value) if max_value is not None else None,
+                    "origin": origin,
+                    "is_required": required,
+                    "is_quality_critical": quality_critical,
+                    "is_active": True,
+                    "notes": notes,
+                    "created_by": admin,
+                    "updated_by": admin,
+                },
+            )
+            parameters[code] = parameter
+
         unit_specs = [
             ("KS-2026-0001", UnitStatus.RELEASED),
             ("KS-2026-0002", UnitStatus.COMPLETED),
@@ -511,6 +760,7 @@ class Command(BaseCommand):
             unit, _ = SerializedUnit.objects.update_or_create(
                 serial_number=serial_number,
                 defaults={
+                    "production_order": production_order,
                     "version": version,
                     "status": status,
                     "updated_by": admin,
@@ -521,6 +771,7 @@ class Command(BaseCommand):
         demo_plan, _ = ProductionPlan.objects.update_or_create(
             code="PLAN-DEMO-2026-001",
             defaults={
+                "production_order": production_order,
                 "version": version,
                 "line": line,
                 "planned_date": today,
@@ -535,7 +786,11 @@ class Command(BaseCommand):
                 "updated_by": admin,
             },
         )
-        SerializedUnit.objects.filter(serial_number__in=serial_units.keys()).update(production_plan=demo_plan, updated_by=admin)
+        SerializedUnit.objects.filter(serial_number__in=serial_units.keys()).update(
+            production_order=production_order,
+            production_plan=demo_plan,
+            updated_by=admin,
+        )
         demo_plan.create_queue_items(admin)
 
         self._populate_unit_flow(
@@ -579,6 +834,44 @@ class Command(BaseCommand):
                 continue
             self._components(unit, stations, steps, requirements, operator, serial_number)
 
+        self._measurements(
+            serial_units["KS-2026-0001"],
+            parameters,
+            operator,
+            quality,
+            include_codes=["KIT_QTY_OK", "TORQUE_CHS_01", "PLC_CONTINUITY", "EOL_SCORE", "LABEL_READABLE"],
+        )
+        self._measurements(
+            serial_units["KS-2026-0002"],
+            parameters,
+            operator,
+            quality,
+            include_codes=["KIT_QTY_OK", "TORQUE_CHS_01", "PLC_CONTINUITY", "EOL_SCORE"],
+        )
+        self._measurements(
+            serial_units["KS-2026-0003"],
+            parameters,
+            operator,
+            quality,
+            include_codes=["KIT_QTY_OK", "TORQUE_CHS_01", "PLC_CONTINUITY", "EOL_SCORE"],
+            eol_score=Decimal("94.2000"),
+        )
+        self._measurements(
+            serial_units["KS-2026-0004"],
+            parameters,
+            operator,
+            quality,
+            include_codes=["KIT_QTY_OK", "TORQUE_CHS_01"],
+            torque=Decimal("112.0000"),
+        )
+        self._measurements(
+            serial_units["KS-2026-0005"],
+            parameters,
+            operator,
+            quality,
+            include_codes=["KIT_QTY_OK", "TORQUE_CHS_01"],
+        )
+
         ReworkOrder.objects.get_or_create(
             unit=serial_units["KS-2026-0004"],
             defect_code="DEF-TORQUE-001",
@@ -616,23 +909,195 @@ class Command(BaseCommand):
             },
         )
 
+        balance_study, _ = LineBalanceStudy.objects.update_or_create(
+            code="BAL-DEMO-2026-001",
+            defaults={
+                "line": line,
+                "version": version,
+                "route": route,
+                "production_plan": demo_plan,
+                "planned_units": demo_plan.target_quantity,
+                "shift_duration_seconds": 28800,
+                "target_takt_seconds": line.takt_time_seconds,
+                "actual_start_date": today - timedelta(days=2),
+                "actual_end_date": today,
+                "notes": "Estudio demo de balanceo contra takt de linea y eventos reales.",
+                "created_by": admin,
+                "updated_by": admin,
+            },
+        )
+        balance_study.calculate(admin)
+
+        andon_signal, _ = AndonSignal.objects.update_or_create(
+            code="ANDON-DEMO-ST020-001",
+            defaults={
+                "line": line,
+                "station": stations["ST-020"],
+                "unit": serial_units["KS-2026-0004"],
+                "production_plan": demo_plan,
+                "severity": AndonSeverity.CRITICAL,
+                "status": AndonStatus.OPEN,
+                "title": "Torque fuera de rango recurrente",
+                "description": "La estacion de chasis requiere soporte de calidad y mantenimiento.",
+                "source": StationEventSource.MANUAL,
+                "opened_by": quality,
+                "opened_at": now - timedelta(hours=3, minutes=15),
+                "acknowledged_by": None,
+                "acknowledged_at": None,
+                "resolved_by": None,
+                "resolved_at": None,
+                "resolution_notes": "",
+                "created_by": quality,
+                "updated_by": quality,
+            },
+        )
+        ProductionDowntime.objects.update_or_create(
+            code="PARO-DEMO-ST020-001",
+            defaults={
+                "line": line,
+                "station": stations["ST-020"],
+                "unit": serial_units["KS-2026-0004"],
+                "production_plan": demo_plan,
+                "andon_signal": andon_signal,
+                "status": DowntimeStatus.OPEN,
+                "cause_category": DowntimeCauseCategory.EQUIPMENT,
+                "cause_code": "TRQ-CAL-REV",
+                "cause_description": "Revision de torquimetro por medicion fuera de tolerancia.",
+                "started_at": now - timedelta(minutes=35),
+                "ended_at": None,
+                "opened_by": quality,
+                "closed_by": None,
+                "evidence_reference": "",
+                "notes": "Paro demo asociado a Andon formal.",
+                "created_by": quality,
+                "updated_by": quality,
+            },
+        )
+        StationOfflineEvent.objects.update_or_create(
+            external_id="OFFLINE-DEMO-ST010-001",
+            defaults={
+                "station": stations["ST-010"],
+                "unit_serial_number": serial_units["KS-2026-0006"].serial_number,
+                "operator_username": operator.username,
+                "event_type": StationEventType.STARTED,
+                "captured_at": now - timedelta(minutes=20),
+                "payload": {"terminal": "ST-010-TABLET", "battery": 72, "offline": True},
+                "status": StationOfflineEventStatus.PENDING,
+                "result_detail": "",
+                "synced_at": None,
+                "station_event": None,
+                "notes": "Captura demo pendiente de sincronizacion.",
+                "created_by": operator,
+                "updated_by": operator,
+            },
+        )
+
+        mix_plan, _ = ModelMixPlan.objects.update_or_create(
+            code="MIX-DEMO-2026-001",
+            defaults={
+                "line": line,
+                "planned_date": today + timedelta(days=1),
+                "shift": "Turno A",
+                "status": ModelMixPlanStatus.DRAFT,
+                "notes": "Mix demo para planificar AWD y FWD en la misma linea.",
+                "created_by": admin,
+                "updated_by": admin,
+            },
+        )
+        ModelMixPlanItem.objects.update_or_create(
+            mix_plan=mix_plan,
+            version=version,
+            defaults={
+                "planned_quantity": 4,
+                "sequence_bias": 1,
+                "priority": ProductionPlanPriority.HIGH,
+                "notes": "Mayor prioridad por demanda comercial.",
+                "created_by": admin,
+                "updated_by": admin,
+            },
+        )
+        ModelMixPlanItem.objects.update_or_create(
+            mix_plan=mix_plan,
+            version=fwd_version,
+            defaults={
+                "planned_quantity": 2,
+                "sequence_bias": 2,
+                "priority": ProductionPlanPriority.NORMAL,
+                "notes": "Version alterna para validar modelos mixtos.",
+                "created_by": admin,
+                "updated_by": admin,
+            },
+        )
+        mix_plan.activate(admin)
+        mix_plan.generate_production_plans(admin)
+
+        ExternalMaterialKit.objects.update_or_create(
+            code="KIT-B22-DEMO-001",
+            defaults={
+                "external_system": "B22",
+                "external_reference": "B22-CKD-2026-001",
+                "version": version,
+                "production_plan": demo_plan,
+                "line": line,
+                "container_code": "CONT-CKD-001",
+                "lot_number": "LOT-CKD-2026-01",
+                "expected_quantity": Decimal("6.0000"),
+                "received_quantity": Decimal("6.0000"),
+                "status": ExternalMaterialKitStatus.RECEIVED,
+                "received_at": now - timedelta(hours=6),
+                "notes": "Kit CKD demo recibido desde referencia externa.",
+                "created_by": admin,
+                "updated_by": admin,
+            },
+        )
+        ExternalMaterialKit.objects.update_or_create(
+            code="KIT-B22-DEMO-002",
+            defaults={
+                "external_system": "B22",
+                "external_reference": "B22-CKD-2026-002",
+                "version": fwd_version,
+                "production_plan": None,
+                "line": line,
+                "container_code": "CONT-CKD-002",
+                "lot_number": "LOT-CKD-2026-02",
+                "expected_quantity": Decimal("2.0000"),
+                "received_quantity": Decimal("0.0000"),
+                "status": ExternalMaterialKitStatus.PLANNED,
+                "received_at": None,
+                "notes": "Kit planificado para mix de modelos.",
+                "created_by": admin,
+                "updated_by": admin,
+            },
+        )
+
         return {
+            "plantas": Plant.objects.count(),
+            "areas": PlantArea.objects.count(),
             "productos": AssembledProduct.objects.count(),
             "versiones": ProductVersion.objects.count(),
+            "ordenes": ProductionOrder.objects.count(),
             "lineas": AssemblyLine.objects.count(),
             "estaciones": AssemblyStation.objects.count(),
             "rutas": AssemblyRoute.objects.count(),
             "pasos": AssemblyRouteStep.objects.count(),
             "requerimientos": RouteStepComponentRequirement.objects.count(),
+            "parametros": RouteStepParameter.objects.count(),
             "planes": ProductionPlan.objects.count(),
             "secuencia": ProductionQueueItem.objects.count(),
             "unidades": SerializedUnit.objects.count(),
             "eventos": UnitStationEvent.objects.count(),
+            "mediciones": ProductionMeasurement.objects.count(),
             "componentes": InstalledComponent.objects.count(),
             "calidad": QualityGate.objects.count(),
             "retrabajos": ReworkOrder.objects.count(),
             "liberaciones": ReleaseApproval.objects.count(),
             "equipos": EquipmentIntegration.objects.count(),
+            "balanceos": LineBalanceStudy.objects.count(),
+            "andon": AndonSignal.objects.count(),
+            "paros": ProductionDowntime.objects.count(),
+            "offline": StationOfflineEvent.objects.count(),
+            "mixes": ModelMixPlan.objects.count(),
+            "kits externos": ExternalMaterialKit.objects.count(),
         }
 
     def _populate_unit_flow(
@@ -645,7 +1110,14 @@ class Command(BaseCommand):
         quality,
         quality_status=None,
     ):
-        from assembly.models import QualityGate, QualityGateStatus, StationEventSource, StationEventType, UnitStationEvent
+        from assembly.models import (
+            QualityDefectClassification,
+            QualityDefectSeverity,
+            QualityGate,
+            QualityGateStatus,
+            StationEventSource,
+            StationEventType,
+        )
 
         base_time = timezone.now() - timedelta(days=1)
         for index, station_code in enumerate(station_codes):
@@ -673,20 +1145,32 @@ class Command(BaseCommand):
             if station.requires_quality_gate:
                 status = quality_status if station_code == station_codes[-1] and quality_status else QualityGateStatus.PASSED
                 inspected_at = None if status == QualityGateStatus.PENDING else event_at + timedelta(minutes=35)
-                QualityGate.objects.get_or_create(
+                defaults = {
+                    "status": status,
+                    "is_blocking": True,
+                    "inspected_by": quality if inspected_at else None,
+                    "inspected_at": inspected_at,
+                    "notes": "Control demo de estacion.",
+                    "created_by": quality,
+                    "updated_by": quality,
+                }
+                if status == QualityGateStatus.FAILED:
+                    defaults.update(
+                        {
+                            "defect_code": "DEF-TORQUE-001",
+                            "defect_classification": QualityDefectClassification.PROCESS,
+                            "defect_severity": QualityDefectSeverity.MAJOR,
+                            "root_cause": "Torque fuera de rango en herramienta critica.",
+                            "responsible_area": "Ensamble",
+                            "notes": "Control demo fallido con defecto clasificado.",
+                        }
+                    )
+                QualityGate.objects.update_or_create(
                     unit=unit,
                     station=station,
                     route_step=step,
                     evidence_reference=f"QA-DEMO-{unit.serial_number}-{station.code}",
-                    defaults={
-                        "status": status,
-                        "is_blocking": True,
-                        "inspected_by": quality if inspected_at else None,
-                        "inspected_at": inspected_at,
-                        "notes": "Control demo de estacion.",
-                        "created_by": quality,
-                        "updated_by": quality,
-                    },
+                    defaults=defaults,
                 )
 
     def _populate_started_unit(self, unit, stations, steps, operator):
@@ -731,6 +1215,80 @@ class Command(BaseCommand):
                 "updated_by": operator,
             },
         )
+
+    def _measurements(
+        self,
+        unit,
+        parameters,
+        operator,
+        quality,
+        *,
+        include_codes,
+        torque=Decimal("132.0000"),
+        eol_score=Decimal("98.5000"),
+    ):
+        from assembly.models import ProductionMeasurement
+
+        measured_at = timezone.now() - timedelta(hours=2)
+        values = {
+            "KIT_QTY_OK": {
+                "value": Decimal("1.0000"),
+                "text_value": "",
+                "measured_by": operator,
+                "evidence_reference": f"MEAS-{unit.serial_number}-KIT",
+            },
+            "TORQUE_CHS_01": {
+                "value": torque,
+                "text_value": "",
+                "measured_by": operator,
+                "evidence_reference": f"MEAS-{unit.serial_number}-TORQUE",
+            },
+            "PLC_CONTINUITY": {
+                "value": None,
+                "text_value": "OK",
+                "measured_by": operator,
+                "evidence_reference": f"MEAS-{unit.serial_number}-PLC",
+            },
+            "EOL_SCORE": {
+                "value": eol_score,
+                "text_value": "",
+                "measured_by": quality,
+                "evidence_reference": f"MEAS-{unit.serial_number}-EOL",
+            },
+            "LABEL_READABLE": {
+                "value": None,
+                "text_value": "SI",
+                "measured_by": quality,
+                "evidence_reference": f"MEAS-{unit.serial_number}-LABEL",
+            },
+        }
+
+        for index, code in enumerate(include_codes):
+            parameter = parameters[code]
+            value_spec = values[code]
+            measured_by = value_spec["measured_by"]
+            ProductionMeasurement.objects.update_or_create(
+                unit=unit,
+                parameter=parameter,
+                defaults={
+                    "station": parameter.route_step.station,
+                    "route_step": parameter.route_step,
+                    "code": parameter.code,
+                    "name": parameter.name,
+                    "value": value_spec["value"],
+                    "text_value": value_spec["text_value"],
+                    "unit_label": parameter.unit,
+                    "min_value": parameter.min_value,
+                    "max_value": parameter.max_value,
+                    "origin": parameter.origin,
+                    "measured_by": measured_by,
+                    "measured_at": measured_at + timedelta(minutes=index * 8),
+                    "evidence_reference": value_spec["evidence_reference"],
+                    "notes": "Medicion demo de parametro productivo.",
+                    "created_by": measured_by,
+                    "updated_by": measured_by,
+                },
+            )
 
     def _components(self, unit, stations, steps, requirements, operator, serial_number):
         from assembly.models import InstalledComponent

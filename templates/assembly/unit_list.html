@@ -49,6 +49,7 @@
           <div class="flex items-start justify-between gap-3">
             <div>
               <p class="font-semibold text-gray-900">{{ unit.serial_number }}</p>
+              <p class="mt-1 text-xs text-gray-500">OP {{ unit.production_order.code|default:"-" }}</p>
               <p class="mt-1 text-sm text-gray-600">{{ unit.version.product.name }} · {{ unit.version.name }}</p>
             </div>
             {% include "assembly/_status_badge.html" with unit=unit %}
@@ -70,6 +71,7 @@
           <tr>
             <th class="px-4 py-3">Numero de serie</th>
             <th class="px-4 py-3">Producto</th>
+            <th class="px-4 py-3">OP</th>
             <th class="px-4 py-3">Version</th>
             <th class="px-4 py-3">Estado</th>
             <th class="px-4 py-3">Registro</th>
@@ -81,6 +83,7 @@
             <tr class="hover:bg-gray-50">
               <td class="px-4 py-3 font-semibold text-gray-900">{{ unit.serial_number }}</td>
               <td class="px-4 py-3 text-gray-700"><span class="font-medium text-gray-900">{{ unit.version.product.name }}</span><span class="block text-xs text-gray-500">{{ unit.version.product.code }}</span></td>
+              <td class="px-4 py-3 text-gray-700">{{ unit.production_order.code|default:"-" }}</td>
               <td class="px-4 py-3 text-gray-700"><span class="font-medium text-gray-900">{{ unit.version.name }}</span><span class="block text-xs text-gray-500">{{ unit.version.code }}</span></td>
               <td class="px-4 py-3">{% include "assembly/_status_badge.html" with unit=unit %}</td>
               <td class="px-4 py-3 text-gray-700">{{ unit.created_at|date:"d/m/Y H:i" }}</td>

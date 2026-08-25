@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Mix de modelos | Kore Serial{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-6xl px-4 py-3">
+  {% include "assembly/_nav.html" with nav_key=nav_key %}
+
+  <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Mix de modelos</p>
+      <h1 class="mt-1 text-xl font-semibold text-gray-900">{{ mix_plan.code }}</h1>
+      <p class="mt-1 text-sm text-gray-600">{{ mix_plan.line.code }} / {{ mix_plan.planned_date|date:"d/m/Y" }} / {{ mix_plan.shift }}</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a href="{{ item_create_url }}" class="inline-flex h-9 items-center rounded-lg bg-orange-600 px-4 text-sm font-semibold text-white hover:bg-orange-700">Agregar version</a>
+      <a href="{{ edit_url }}" class="inline-flex h-9 items-center rounded-lg border px-4 text-sm font-medium text-gray-700 hover:bg-gray-50">Editar</a>
+      <a href="{{ back_url }}" class="inline-flex h-9 items-center rounded-lg border px-4 text-sm font-medium text-gray-700 hover:bg-gray-50">Volver</a>
+    </div>
+  </div>
+
+  <section class="mb-4 grid gap-3 md:grid-cols-4">
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Estado</p>
+      <p class="mt-2 text-sm font-semibold text-gray-900">{{ mix_plan.get_status_display }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Versiones</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ items|length }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Unidades</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ total_units }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Linea</p>
+      <p class="mt-2 text-sm font-semibold text-gray-900">{{ mix_plan.line.code }}</p>
+      <p class="text-xs text-gray-600">{{ mix_plan.line.name }}</p>
+    </div>
+  </section>
+
+  {% if available_actions %}
+    <form method="post" class="mb-4 rounded-lg border bg-white p-4">
+      {% csrf_token %}
+      {% if action_form.non_field_errors %}
+        <div class="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{{ action_form.non_field_errors }}</div>
+      {% endif %}
+      <label class="block text-xs font-medium text-gray-700">
+        Notas
+        {{ action_form.notes }}
+      </label>
+      <div class="mt-3 flex flex-wrap gap-2">
+        {% if "activate" in available_actions %}
+          <button type="submit" name="action" value="activate" class="h-9 rounded-lg border border-emerald-300 bg-white px-4 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">Activar mix</button>
+        {% endif %}
+        {% if "generate_plans" in available_actions %}
+          <button type="submit" name="action" value="generate_plans" class="h-9 rounded-lg bg-orange-600 px-4 text-sm font-semibold text-white hover:bg-orange-700">Generar planes</button>
+        {% endif %}
+        {% if "close" in available_actions %}
+          <button type="submit" name="action" value="close" class="h-9 rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cerrar mix</button>
+        {% endif %}
+        {% if "cancel" in available_actions %}
+          <button type="submit" name="action" value="cancel" class="h-9 rounded-lg border border-red-300 bg-white px-4 text-sm font-semibold text-red-700 hover:bg-red-50">Cancelar</button>
+        {% endif %}
+      </div>
+    </form>
+  {% endif %}
+
+  <section class="rounded-lg border bg-white">
+    <div class="border-b px-4 py-3">
+      <h2 class="text-sm font-semibold text-gray-900">Versiones del mix</h2>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">
+          <tr>
+            <th class="px-4 py-3">Version</th>
+            <th class="px-4 py-3">Cantidad</th>
+            <th class="px-4 py-3">Peso</th>
+            <th class="px-4 py-3">Prioridad</th>
+            <th class="px-4 py-3">Plan generado</th>
+            <th class="px-4 py-3 text-right">Accion</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for item in items %}
+            <tr>
+              <td class="px-4 py-3">
+                <p class="font-semibold text-gray-900">{{ item.version.code }}</p>
+                <p class="text-xs text-gray-500">{{ item.version.product.code }} / {{ item.version.name }}</p>
+              </td>
+              <td class="px-4 py-3 text-gray-700">{{ item.planned_quantity }}</td>
+              <td class="px-4 py-3 text-gray-700">{{ item.sequence_bias }}</td>
+              <td class="px-4 py-3 text-gray-700">{{ item.get_priority_display }}</td>
+              <td class="px-4 py-3 text-gray-700">
+                {% if item.production_plan %}
+                  <a href="{% url 'assembly:plan_control' item.production_plan.pk %}" class="text-orange-700 hover:underline">{{ item.production_plan.code }}</a>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td class="px-4 py-3 text-right">
+                <a href="{% url 'assembly:mix_item_update' item.pk %}" class="inline-flex rounded-lg border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">Editar</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6" class="px-4 py-5 text-center text-sm text-gray-500">Agrega versiones para planificar modelos mixtos.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}

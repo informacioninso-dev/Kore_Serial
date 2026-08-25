@@ -12,9 +12,11 @@ from .models import (
     EquipmentInboundEventStatus,
     QualityGate,
     QualityGateStatus,
+    ProductionMeasurement,
     ReworkOrder,
     ReworkStatus,
     InstalledComponent,
+    RouteStepParameter,
     RouteStepComponentRequirement,
     SerializedUnit,
     StationEventSource,
@@ -81,12 +83,24 @@ def _active_operator(username, fallback):
     return operator
 
 
-def record_station_event(*, actor, unit_serial_number, station_code, event_type, operator_username="", event_at=None, external_reference="", notes="", metadata=None):
+def record_station_event(
+    *,
+    actor,
+    unit_serial_number,
+    station_code,
+    event_type,
+    operator_username="",
+    event_at=None,
+    external_reference="",
+    notes="",
+    metadata=None,
+    source=StationEventSource.API,
+):
     """Registra un evento de terminal aplicando las mismas reglas de la consola."""
     with transaction.atomic():
         if external_reference:
             existing = UnitStationEvent.objects.filter(
-                source=StationEventSource.API,
+                source=source,
                 external_reference=external_reference,
             ).first()
             if existing is not None:
@@ -114,7 +128,7 @@ def record_station_event(*, actor, unit_serial_number, station_code, event_type,
             event_type=event_type,
             event_at=event_at or timezone.now(),
             operator=operator,
-            source=StationEventSource.API,
+            source=source,
             external_reference=external_reference,
             notes=notes,
             metadata=metadata or {},
@@ -166,7 +180,20 @@ def install_component(*, actor, unit_serial_number, requirement_id, serial_numbe
     return component
 
 
-def review_quality_gate(*, actor, quality_gate_id, status, evidence_reference, notes="", inspector_username=""):
+def review_quality_gate(
+    *,
+    actor,
+    quality_gate_id,
+    status,
+    evidence_reference,
+    notes="",
+    inspector_username="",
+    defect_code="",
+    defect_classification="",
+    defect_severity="",
+    root_cause="",
+    responsible_area="",
+):
     if status not in {QualityGateStatus.PASSED, QualityGateStatus.FAILED, QualityGateStatus.WAIVED}:
         raise ValueError("Resultado de calidad invalido.")
     if not evidence_reference:
@@ -180,12 +207,110 @@ def review_quality_gate(*, actor, quality_gate_id, status, evidence_reference, n
     gate.status = status
     gate.evidence_reference = evidence_reference
     gate.notes = notes
+    if defect_code:
+        gate.defect_code = defect_code
+    if defect_classification:
+        gate.defect_classification = defect_classification
+    if defect_severity:
+        gate.defect_severity = defect_severity
+    if root_cause:
+        gate.root_cause = root_cause
+    if responsible_area:
+        gate.responsible_area = responsible_area
     gate.inspected_by = inspector
     gate.inspected_at = timezone.now()
     gate.updated_by = actor
-    gate.save(update_fields=["status", "evidence_reference", "notes", "inspected_by", "inspected_at", "updated_by", "updated_at"])
+    gate.save(
+        update_fields=[
+            "status",
+            "evidence_reference",
+            "notes",
+            "defect_code",
+            "defect_classification",
+            "defect_severity",
+            "root_cause",
+            "responsible_area",
+            "inspected_by",
+            "inspected_at",
+            "updated_by",
+            "updated_at",
+        ]
+    )
     gate.apply_result_to_unit(inspector)
     return gate
+
+
+def record_measurement(
+    *,
+    actor,
+    unit_serial_number,
+    parameter_id=None,
+    station_code="",
+    code="",
+    name="",
+    value=None,
+    text_value="",
+    origin="API",
+    measured_at=None,
+    station_event_id=None,
+    evidence_reference="",
+    notes="",
+):
+    unit = SerializedUnit.objects.filter(serial_number=unit_serial_number).select_related("version").first()
+    if unit is None:
+        raise ValueError(f"Unidad {unit_serial_number} no encontrada.")
+
+    parameter = None
+    route_step = None
+    station = None
+    if parameter_id:
+        parameter = RouteStepParameter.objects.select_related("route_step__station", "route_step__route").filter(
+            pk=parameter_id,
+            is_active=True,
+        ).first()
+        if parameter is None:
+            raise ValueError("Parametro productivo no encontrado o inactivo.")
+        if parameter.route_step.route.version_id != unit.version_id:
+            raise ValueError("El parametro no corresponde a la version de la unidad.")
+        route_step = parameter.route_step
+        station = parameter.route_step.station
+    else:
+        if not station_code:
+            raise ValueError("Indica estacion cuando no uses parametro configurado.")
+        if not code:
+            raise ValueError("Indica codigo de medicion cuando no uses parametro configurado.")
+        station = AssemblyStation.objects.filter(code=station_code, is_active=True).first()
+        if station is None:
+            raise ValueError(f"Estacion {station_code} no encontrada o inactiva.")
+        _route, route_step = route_step_for(unit, station)
+
+    station_event = None
+    if station_event_id:
+        station_event = UnitStationEvent.objects.filter(pk=station_event_id, unit=unit).first()
+        if station_event is None:
+            raise ValueError("El evento de estacion no corresponde a la unidad.")
+
+    measurement = ProductionMeasurement(
+        unit=unit,
+        station=station,
+        route_step=route_step,
+        parameter=parameter,
+        station_event=station_event,
+        code=code or (parameter.code if parameter else ""),
+        name=name or (parameter.name if parameter else code),
+        value=value,
+        text_value=text_value,
+        origin=origin,
+        measured_by=actor,
+        measured_at=measured_at or timezone.now(),
+        evidence_reference=evidence_reference,
+        notes=notes,
+        created_by=actor,
+        updated_by=actor,
+    )
+    measurement.full_clean()
+    measurement.save()
+    return measurement
 
 
 def apply_station_event_effects(unit, station, step, event_type, user, defect_code="", notes=""):

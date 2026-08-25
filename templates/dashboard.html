@@ -1,0 +1,1015 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio | Kore Serial{% endblock %}
+
+{% block head_extra %}
+<style>
+  .home-dashboard {
+    max-width: 80rem;
+    margin: 0 auto;
+    padding: 0.75rem 1rem 1.5rem;
+  }
+
+  .home-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .home-heading h1 {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+    font-weight: 600;
+    color: #1f1f1f;
+  }
+
+  .home-heading p,
+  .home-muted {
+    color: #666666;
+    font-size: 0.875rem;
+  }
+
+  .home-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .home-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 2.25rem;
+    border-radius: 0.5rem;
+    border: 1px solid #d9d9d9;
+    background: #ffffff;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #333333;
+  }
+
+  .home-action-primary {
+    border-color: #ff8c00;
+    background: #ff8c00;
+    color: #ffffff;
+  }
+
+  .home-kpi-grid,
+  .home-module-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: 0.75rem;
+  }
+
+  .home-panel-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  @media (min-width: 64rem) {
+    .home-panel-grid {
+      grid-template-columns: minmax(0, 1.35fr) minmax(22rem, 0.65fr);
+    }
+  }
+
+  .home-card,
+  .home-panel {
+    border: 1px solid #d9d9d9;
+    border-radius: 0.5rem;
+    background: #ffffff;
+    box-shadow: 0 2px 12px -4px rgba(51, 51, 51, 0.12);
+  }
+
+  .home-card {
+    display: block;
+    padding: 1rem;
+  }
+
+  .home-card:hover,
+  .home-module:hover {
+    border-color: #ffb866;
+    background: #fffaf2;
+  }
+
+  .home-card-label,
+  .home-section-label {
+    color: #999999;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+  }
+
+  .home-card-value {
+    margin-top: 0.35rem;
+    color: #1f1f1f;
+    font-size: 1.75rem;
+    line-height: 2.1rem;
+    font-weight: 700;
+  }
+
+  .home-card-detail {
+    margin-top: 0.25rem;
+    color: #666666;
+    font-size: 0.8125rem;
+  }
+
+  .home-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.65rem;
+    border-radius: 999px;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .home-delta-success {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  .home-delta-warning {
+    background: #fff8e1;
+    color: #806004;
+  }
+
+  .home-delta-danger {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  .home-delta-neutral {
+    background: #f0f0f0;
+    color: #4d4d4d;
+  }
+
+  .home-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-bottom: 1px solid #e5e5e5;
+    padding: 0.85rem 1rem;
+  }
+
+  .home-panel-title {
+    color: #1f1f1f;
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+
+  .home-panel-body {
+    padding: 1rem;
+  }
+
+  .home-trend {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(4.25rem, 1fr));
+    align-items: end;
+    gap: 0.65rem;
+    min-height: 13rem;
+    overflow-x: auto;
+  }
+
+  .home-trend-day {
+    min-width: 4.25rem;
+  }
+
+  .home-trend-bars {
+    display: flex;
+    align-items: end;
+    justify-content: center;
+    gap: 0.25rem;
+    height: 8.75rem;
+    border-bottom: 1px solid #d9d9d9;
+  }
+
+  .home-trend-bar {
+    width: 1.1rem;
+    min-height: 0.25rem;
+    border-radius: 0.25rem 0.25rem 0 0;
+  }
+
+  .home-trend-planned {
+    background: #d9d9d9;
+  }
+
+  .home-trend-completed {
+    background: #ff8c00;
+  }
+
+  .home-trend-date {
+    margin-top: 0.4rem;
+    color: #666666;
+    font-size: 0.75rem;
+    text-align: center;
+  }
+
+  .home-trend-numbers {
+    color: #333333;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .home-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    color: #666666;
+    font-size: 0.75rem;
+  }
+
+  .home-legend-dot {
+    display: inline-block;
+    width: 0.7rem;
+    height: 0.7rem;
+    margin-right: 0.3rem;
+    border-radius: 999px;
+    vertical-align: -0.05rem;
+  }
+
+  .home-progress-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .home-progress-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    color: #333333;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .home-progress-track {
+    height: 0.55rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #f0f0f0;
+  }
+
+  .home-progress-fill {
+    height: 100%;
+    min-width: 0.18rem;
+    border-radius: inherit;
+    background: #ff8c00;
+  }
+
+  .home-progress-fill-muted {
+    background: #999999;
+  }
+
+  .home-progress-fill-danger {
+    background: #dc2626;
+  }
+
+  .home-scatter {
+    position: relative;
+    height: 18rem;
+    border-left: 1px solid #999999;
+    border-bottom: 1px solid #999999;
+    background-image:
+      linear-gradient(#f0f0f0 1px, transparent 1px),
+      linear-gradient(90deg, #f0f0f0 1px, transparent 1px);
+    background-size: 20% 20%;
+  }
+
+  .home-scatter-dot {
+    position: absolute;
+    display: grid;
+    width: 2.1rem;
+    height: 2.1rem;
+    place-items: center;
+    transform: translate(-50%, 50%);
+    border: 2px solid #ffffff;
+    border-radius: 999px;
+    background: #999999;
+    box-shadow: 0 6px 18px -7px rgba(51, 51, 51, 0.6);
+    color: #ffffff;
+    font-size: 0.7rem;
+    font-weight: 800;
+  }
+
+  .home-scatter-dot:hover {
+    outline: 3px solid rgba(255, 140, 0, 0.24);
+    text-decoration: none;
+  }
+
+  .home-scatter-dot-warning {
+    background: #ff8c00;
+  }
+
+  .home-scatter-dot-danger {
+    background: #dc2626;
+  }
+
+  .home-axis {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.45rem;
+    color: #666666;
+    font-size: 0.75rem;
+  }
+
+  .home-station-list {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 0.9rem;
+  }
+
+  .home-station-row {
+    display: grid;
+    grid-template-columns: minmax(8rem, 1fr) repeat(4, minmax(3.5rem, auto)) minmax(5rem, auto);
+    gap: 0.65rem;
+    align-items: center;
+    border: 1px solid #e5e5e5;
+    border-radius: 0.5rem;
+    padding: 0.65rem 0.75rem;
+    background: #ffffff;
+  }
+
+  .home-station-row:hover {
+    border-color: #ffb866;
+    background: #fffaf2;
+    text-decoration: none;
+  }
+
+  .home-station-main {
+    min-width: 0;
+  }
+
+  .home-station-code {
+    color: #1f1f1f;
+    font-size: 0.875rem;
+    font-weight: 800;
+  }
+
+  .home-station-name,
+  .home-station-metric-label {
+    color: #666666;
+    font-size: 0.75rem;
+  }
+
+  .home-station-metric {
+    text-align: right;
+  }
+
+  .home-station-metric-value {
+    color: #1f1f1f;
+    font-size: 0.875rem;
+    font-weight: 800;
+  }
+
+  .home-station-cta {
+    color: #cc7000;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-align: right;
+  }
+
+  @media (max-width: 48rem) {
+    .home-station-row {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .home-station-main {
+      grid-column: 1 / -1;
+    }
+
+    .home-station-cta {
+      grid-column: 1 / -1;
+      text-align: left;
+    }
+  }
+
+  .home-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+
+  .home-table th {
+    border-bottom: 1px solid #e5e5e5;
+    color: #666666;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.025em;
+    padding: 0.65rem 0.5rem;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  .home-table td {
+    border-bottom: 1px solid #f0f0f0;
+    color: #333333;
+    padding: 0.65rem 0.5rem;
+    vertical-align: top;
+  }
+
+  .home-table tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .home-module {
+    display: block;
+    border: 1px solid #d9d9d9;
+    border-radius: 0.5rem;
+    background: #ffffff;
+    padding: 0.9rem;
+  }
+
+  .home-module-disabled {
+    opacity: 0.58;
+  }
+
+  .home-module-title {
+    color: #1f1f1f;
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+
+  .home-module-value {
+    margin-top: 0.55rem;
+    color: #ff8c00;
+    font-size: 1.35rem;
+    font-weight: 800;
+  }
+
+  .home-flow-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .home-flow-card {
+    display: flex;
+    min-height: 11rem;
+    flex-direction: column;
+    justify-content: space-between;
+    border: 1px solid #d9d9d9;
+    border-radius: 0.5rem;
+    background: #ffffff;
+    padding: 1rem;
+    box-shadow: 0 2px 12px -4px rgba(51, 51, 51, 0.12);
+  }
+
+  .home-flow-card:hover {
+    border-color: #ffb866;
+    background: #fffaf2;
+  }
+
+  .home-flow-card-disabled {
+    background: #f7f7f7;
+    opacity: 0.72;
+  }
+
+  .home-flow-number {
+    display: inline-grid;
+    width: 2rem;
+    height: 2rem;
+    place-items: center;
+    border-radius: 999px;
+    background: #333333;
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 800;
+  }
+
+  .home-flow-phase {
+    color: #ff8c00;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+  }
+
+  .home-flow-title {
+    margin-top: 0.45rem;
+    color: #1f1f1f;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .home-flow-summary {
+    margin-top: 0.35rem;
+    color: #666666;
+    font-size: 0.8125rem;
+  }
+
+  .home-flow-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    color: #4d4d4d;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .home-flow-cta {
+    color: #cc7000;
+    white-space: nowrap;
+  }
+
+  .home-guide-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  @media (min-width: 64rem) {
+    .home-guide-grid {
+      grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    }
+  }
+
+  .home-check-list,
+  .home-action-list {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .home-check-row,
+  .home-action-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 1px solid #e5e5e5;
+    border-radius: 0.5rem;
+    padding: 0.7rem 0.75rem;
+  }
+
+  .home-check-row {
+    background: #ffffff;
+  }
+
+  .home-action-row {
+    background: #fffaf2;
+  }
+
+  .home-check-name,
+  .home-action-name {
+    color: #1f1f1f;
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+
+  .home-check-detail,
+  .home-action-detail {
+    margin-top: 0.1rem;
+    color: #666666;
+    font-size: 0.75rem;
+  }
+
+  .home-check-state {
+    border-radius: 999px;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .home-check-state-ok {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  .home-check-state-pending {
+    background: #fff8e1;
+    color: #806004;
+  }
+
+  .home-process-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8.75rem, 1fr));
+    gap: 0.5rem;
+  }
+
+  .home-process-item {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    gap: 0.6rem;
+    align-items: start;
+    border: 1px solid #e5e5e5;
+    border-radius: 0.5rem;
+    background: #ffffff;
+    padding: 0.65rem;
+  }
+
+  .home-process-item:hover {
+    border-color: #ffb866;
+    background: #fffaf2;
+  }
+
+  .home-process-item-disabled {
+    background: #f7f7f7;
+    opacity: 0.7;
+  }
+
+  .home-process-index {
+    display: grid;
+    width: 1.8rem;
+    height: 1.8rem;
+    place-items: center;
+    border-radius: 999px;
+    background: #333333;
+    color: #ffffff;
+    font-size: 0.7rem;
+    font-weight: 800;
+  }
+
+  .home-process-phase {
+    color: #ff8c00;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+  }
+
+  .home-process-title {
+    margin-top: 0.1rem;
+    color: #1f1f1f;
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+
+  .home-process-status {
+    margin-top: 0.15rem;
+    color: #666666;
+    font-size: 0.75rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="home-dashboard">
+  <div class="home-heading">
+    <div>
+      <p class="home-section-label">{{ tenant_name }}</p>
+      <h1>Inicio</h1>
+      <p>Resumen operativo, pendientes y KPIs globales. Corte: {{ today_label|default:"-" }}</p>
+    </div>
+    <div class="home-actions">
+      {% if can_view_production %}
+        <a href="{% url 'assembly:index' %}" class="home-action home-action-primary">Abrir planta</a>
+        {% if can_view_metrics %}
+          <a href="{% url 'assembly:metrics' %}" class="home-action">Ver indicadores</a>
+        {% endif %}
+      {% endif %}
+      {% if is_tenant_admin %}
+        <a href="{% url 'core:settings' %}" class="home-action">Preparar sistema</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if not can_view_production %}
+    <section class="home-panel">
+      <div class="home-panel-header">
+        <div>
+          <p class="home-section-label">Acceso</p>
+          <h2 class="home-panel-title">No tienes permisos de produccion</h2>
+        </div>
+      </div>
+      <div class="home-panel-body">
+        <p class="home-muted">Inicio esta disponible, pero los KPIs operativos requieren permiso para ver unidades serializadas.</p>
+      </div>
+    </section>
+  {% else %}
+    <section class="home-guide-grid">
+      <div class="home-panel">
+        <div class="home-panel-header">
+          <div>
+            <p class="home-section-label">Trabajo</p>
+            <h2 class="home-panel-title">Pendientes de trabajo</h2>
+          </div>
+        </div>
+        <div class="home-panel-body">
+          <div class="home-action-list">
+            {% for action in next_actions %}
+              <a href="{{ action.href }}" class="home-action-row">
+                <div>
+                  <p class="home-action-name">{{ action.label }}</p>
+                  <p class="home-action-detail">{{ action.detail }}</p>
+                </div>
+                <span class="home-flow-cta">Abrir</span>
+              </a>
+            {% empty %}
+              <div class="home-check-row">
+                <div>
+                  <p class="home-check-name">Sin pendientes operativos visibles</p>
+                  <p class="home-check-detail">No hay acciones urgentes para tu rol.</p>
+                </div>
+                <span class="home-check-state home-check-state-ok">OK</span>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="home-panel">
+        <div class="home-panel-header">
+          <div>
+            <p class="home-section-label">Proceso</p>
+            <h2 class="home-panel-title">Estado operativo</h2>
+          </div>
+        </div>
+        <div class="home-panel-body">
+          <div class="home-process-list">
+            {% for step in workflow_steps %}
+              {% if step.enabled and step.href %}
+                <a href="{{ step.href }}" class="home-process-item">
+              {% else %}
+                <div class="home-process-item home-process-item-disabled">
+              {% endif %}
+                  <span class="home-process-index">{{ step.number }}</span>
+                  <div>
+                    <p class="home-process-phase">{{ step.phase }}</p>
+                    <p class="home-process-title">{{ step.title }}</p>
+                    <p class="home-process-status">{{ step.status }}</p>
+                  </div>
+              {% if step.enabled and step.href %}
+                </a>
+              {% else %}
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="home-kpi-grid">
+      {% for card in kpi_cards %}
+        {% if card.enabled and card.href %}
+          <a href="{{ card.href }}" class="home-card">
+        {% else %}
+          <div class="home-card home-flow-card-disabled">
+        {% endif %}
+          <p class="home-card-label">{{ card.label }}</p>
+          <p class="home-card-value">{{ card.value }}</p>
+          <p class="home-card-detail">{{ card.detail }}</p>
+          <span class="home-delta home-delta-{{ card.trend.tone }}">{{ card.trend.label }} {{ card.trend.value }} <span>{{ card.trend.caption }}</span></span>
+        {% if card.enabled and card.href %}
+          </a>
+        {% else %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    </section>
+
+    <section class="home-panel-grid">
+      <div class="home-panel">
+        <div class="home-panel-header">
+          <div>
+            <p class="home-section-label">Tendencia 7 dias</p>
+            <h2 class="home-panel-title">Planificado contra terminado</h2>
+          </div>
+          <div class="home-legend">
+            <span><span class="home-legend-dot" style="background:#d9d9d9"></span>Plan</span>
+            <span><span class="home-legend-dot" style="background:#ff8c00"></span>Terminado</span>
+          </div>
+        </div>
+        <div class="home-panel-body">
+          <div class="home-trend">
+            {% for row in trend_rows %}
+              <div class="home-trend-day">
+                <div class="home-trend-bars">
+                  <span class="home-trend-bar home-trend-planned" style="height: {{ row.planned_bar }}%"></span>
+                  <span class="home-trend-bar home-trend-completed" style="height: {{ row.completed_bar }}%"></span>
+                </div>
+                <p class="home-trend-date">{{ row.label }}</p>
+                <p class="home-trend-numbers">{{ row.completed }}/{{ row.planned }}</p>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="home-panel">
+        <div class="home-panel-header">
+          <div>
+            <p class="home-section-label">Estado actual</p>
+            <h2 class="home-panel-title">Distribucion de unidades</h2>
+          </div>
+        </div>
+        <div class="home-panel-body">
+          <div class="home-progress-list">
+            {% for row in unit_status_rows %}
+              <div>
+                <div class="home-progress-head">
+                  <span>{{ row.label }}</span>
+                  <span>{{ row.count }} {% if row.percent %}({{ row.percent }}%){% endif %}</span>
+                </div>
+                <div class="home-progress-track"><div class="home-progress-fill" style="width: {{ row.bar }}%"></div></div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="home-panel-grid">
+      <div class="home-panel">
+        <div class="home-panel-header">
+          <div>
+            <p class="home-section-label">Dispersion de planta</p>
+            <h2 class="home-panel-title">Carga contra presion por estacion</h2>
+          </div>
+          <div class="home-legend">
+            <span><span class="home-legend-dot" style="background:#999999"></span>Libre</span>
+            <span><span class="home-legend-dot" style="background:#ff8c00"></span>Carga</span>
+            <span><span class="home-legend-dot" style="background:#dc2626"></span>Presion</span>
+          </div>
+        </div>
+        <div class="home-panel-body">
+          <div class="home-scatter">
+            {% for point in station_points %}
+              {% if point.href %}
+                <a href="{{ point.href }}"
+                   class="home-scatter-dot home-scatter-dot-{{ point.tone }}"
+                   style="left: {{ point.x }}%; bottom: {{ point.y }}%;"
+                   title="{{ point.line }} / {{ point.code }} - {{ point.name }} | cola {{ point.load }} | presion {{ point.pressure }} | serial {{ point.head_serial|default:'-' }}">
+                  {{ point.short_code }}
+                </a>
+              {% else %}
+                <span class="home-scatter-dot home-scatter-dot-{{ point.tone }}"
+                      style="left: {{ point.x }}%; bottom: {{ point.y }}%;"
+                      title="{{ point.line }} / {{ point.code }} - {{ point.name }} | cola {{ point.load }} | presion {{ point.pressure }} | serial {{ point.head_serial|default:'-' }}">
+                  {{ point.short_code }}
+                </span>
+              {% endif %}
+            {% empty %}
+              <p class="home-muted">Sin estaciones activas.</p>
+            {% endfor %}
+          </div>
+          <div class="home-axis"><span>Menor carga</span><span>Mayor carga</span></div>
+          <div class="home-station-list">
+            {% for point in station_points %}
+              {% if point.href %}
+                <a href="{{ point.href }}" class="home-station-row">
+              {% else %}
+                <div class="home-station-row">
+              {% endif %}
+                  <div class="home-station-main">
+                    <p class="home-station-code">{{ point.line }} / {{ point.code }}</p>
+                    <p class="home-station-name">{{ point.name }}{% if point.head_serial %} / {{ point.head_serial }}{% endif %}</p>
+                  </div>
+                  <div class="home-station-metric">
+                    <p class="home-station-metric-value">{{ point.load }}</p>
+                    <p class="home-station-metric-label">Cola</p>
+                  </div>
+                  <div class="home-station-metric">
+                    <p class="home-station-metric-value">{{ point.andon }}</p>
+                    <p class="home-station-metric-label">Andon</p>
+                  </div>
+                  <div class="home-station-metric">
+                    <p class="home-station-metric-value">{{ point.downtime }}</p>
+                    <p class="home-station-metric-label">Paros</p>
+                  </div>
+                  <div class="home-station-metric">
+                    <p class="home-station-metric-value">{{ point.quality|add:point.rework }}</p>
+                    <p class="home-station-metric-label">Calidad</p>
+                  </div>
+                  <p class="home-station-cta">{{ point.cta|default:"-" }}</p>
+              {% if point.href %}
+                </a>
+              {% else %}
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="home-panel">
+        <div class="home-panel-header">
+          <div>
+            <p class="home-section-label">Focos abiertos</p>
+            <h2 class="home-panel-title">Presion por tipo</h2>
+          </div>
+        </div>
+        <div class="home-panel-body">
+          <div class="home-progress-list">
+            {% for row in open_issue_rows %}
+              <a href="{{ row.href }}">
+                <div class="home-progress-head">
+                  <span>{{ row.label }}</span>
+                  <span>{{ row.value }}</span>
+                </div>
+                <div class="home-progress-track"><div class="home-progress-fill home-progress-fill-danger" style="width: {{ row.bar }}%"></div></div>
+              </a>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="home-panel-grid">
+      <div class="home-panel">
+        <div class="home-panel-header">
+          <div>
+            <p class="home-section-label">Tabla de tendencia</p>
+            <h2 class="home-panel-title">Resumen diario MES</h2>
+          </div>
+        </div>
+        <div class="home-panel-body" style="overflow-x:auto">
+          <table class="home-table">
+            <thead>
+              <tr>
+                <th>Dia</th>
+                <th>Plan</th>
+                <th>Terminado</th>
+                <th>Cumplimiento</th>
+                <th>Calidad</th>
+                <th>Fallas</th>
+                <th>Retrabajo</th>
+                <th>Paros</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in trend_rows %}
+                <tr>
+                  <td>{{ row.label }}</td>
+                  <td>{{ row.planned }}</td>
+                  <td>{{ row.completed }}</td>
+                  <td>{% if row.fulfillment_percent is not None %}{{ row.fulfillment_percent }}%{% else %}-{% endif %}</td>
+                  <td>{% if row.quality_percent is not None %}{{ row.quality_percent }}%{% else %}-{% endif %}</td>
+                  <td>{{ row.failures }}</td>
+                  <td>{{ row.reworks }}</td>
+                  <td>{{ row.downtime_label }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="home-panel">
+        <div class="home-panel-header">
+          <div>
+            <p class="home-section-label">Planes</p>
+            <h2 class="home-panel-title">Distribucion por estado</h2>
+          </div>
+        </div>
+        <div class="home-panel-body">
+          <div class="home-progress-list">
+            {% for row in plan_status_rows %}
+              <div>
+                <div class="home-progress-head">
+                  <span>{{ row.label }}</span>
+                  <span>{{ row.count }}</span>
+                </div>
+                <div class="home-progress-track"><div class="home-progress-fill home-progress-fill-muted" style="width: {{ row.bar }}%"></div></div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="home-panel" style="margin-top:1rem">
+      <div class="home-panel-header">
+        <div>
+          <p class="home-section-label">Modulos</p>
+          <h2 class="home-panel-title">Accesos y salud del sistema</h2>
+        </div>
+      </div>
+      <div class="home-panel-body">
+        <div class="home-module-grid">
+          {% for module in module_cards %}
+            {% if module.enabled and module.href %}
+              <a href="{{ module.href }}" class="home-module">
+            {% else %}
+              <div class="home-module home-module-disabled">
+            {% endif %}
+                <p class="home-module-title">{{ module.label }}</p>
+                <p class="home-muted">{{ module.metric }}</p>
+                <p class="home-module-value">{{ module.value }}</p>
+            {% if module.enabled and module.href %}
+              </a>
+            {% else %}
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+  {% endif %}
+</div>
+{% endblock %}

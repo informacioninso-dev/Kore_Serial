@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}MES avanzado | Kore Serial{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-3">
+  {% include "assembly/_nav.html" with nav_key=nav_key %}
+
+  <div class="mb-4">
+    <h1 class="text-xl font-semibold text-gray-900">MES avanzado</h1>
+    <p class="mt-1 text-sm text-gray-600">Controles extendidos de planta: andon, paros, offline, mix de modelos y kits externos.</p>
+  </div>
+
+  <section class="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+    {% if perms.assembly.view_andonsignal %}
+      <a href="{% url 'assembly:andon_list' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50">
+        <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Andon activo</p>
+        <p class="mt-2 text-2xl font-semibold text-gray-900">{{ open_andon_count }}</p>
+        <p class="mt-1 text-sm text-gray-600">Senales abiertas o reconocidas.</p>
+      </a>
+    {% endif %}
+    {% if perms.assembly.view_productiondowntime %}
+      <a href="{% url 'assembly:downtime_list' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50">
+        <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Paros abiertos</p>
+        <p class="mt-2 text-2xl font-semibold text-gray-900">{{ open_downtime_count }}</p>
+        <p class="mt-1 text-sm text-gray-600">Interrupciones con causa pendiente.</p>
+      </a>
+    {% endif %}
+    {% if perms.assembly.view_stationofflineevent %}
+      <a href="{% url 'assembly:offline_list' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50">
+        <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Offline pendiente</p>
+        <p class="mt-2 text-2xl font-semibold text-gray-900">{{ pending_offline_count }}</p>
+        <p class="mt-1 text-sm text-gray-600">Eventos capturados sin conexion.</p>
+      </a>
+    {% endif %}
+    {% if perms.assembly.view_modelmixplan %}
+      <a href="{% url 'assembly:mix_list' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50">
+        <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Mix activo</p>
+        <p class="mt-2 text-2xl font-semibold text-gray-900">{{ active_mix_count }}</p>
+        <p class="mt-1 text-sm text-gray-600">Mezcla de versiones en linea.</p>
+      </a>
+    {% endif %}
+    {% if perms.assembly.view_externalmaterialkit %}
+      <a href="{% url 'assembly:kit_list' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50">
+        <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Kits abiertos</p>
+        <p class="mt-2 text-2xl font-semibold text-gray-900">{{ open_kit_count }}</p>
+        <p class="mt-1 text-sm text-gray-600">CKD o material externo por recibir.</p>
+      </a>
+    {% endif %}
+  </section>
+
+  <section class="grid gap-4 lg:grid-cols-3">
+    <div class="rounded-lg border bg-white">
+      <div class="border-b px-4 py-3">
+        <h2 class="text-sm font-semibold text-gray-900">Andon reciente</h2>
+      </div>
+      <div class="divide-y divide-gray-100">
+        {% for signal in recent_andon %}
+          <a href="{% url 'assembly:andon_control' signal.pk %}" class="block px-4 py-3 hover:bg-gray-50">
+            <p class="text-sm font-semibold text-gray-900">{{ signal.code }}</p>
+            <p class="mt-1 text-xs text-gray-600">{% if signal.station %}{{ signal.station.code }}{% else %}{{ signal.line.code }}{% endif %} / {{ signal.title }}</p>
+          </a>
+        {% empty %}
+          <p class="px-4 py-5 text-sm text-gray-500">Sin senales recientes.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="rounded-lg border bg-white">
+      <div class="border-b px-4 py-3">
+        <h2 class="text-sm font-semibold text-gray-900">Paros recientes</h2>
+      </div>
+      <div class="divide-y divide-gray-100">
+        {% for downtime in recent_downtimes %}
+          <a href="{% url 'assembly:downtime_control' downtime.pk %}" class="block px-4 py-3 hover:bg-gray-50">
+            <p class="text-sm font-semibold text-gray-900">{{ downtime.code }}</p>
+            <p class="mt-1 text-xs text-gray-600">{% if downtime.station %}{{ downtime.station.code }}{% else %}{{ downtime.line.code }}{% endif %} / {{ downtime.cause_code }}</p>
+          </a>
+        {% empty %}
+          <p class="px-4 py-5 text-sm text-gray-500">Sin paros recientes.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="rounded-lg border bg-white">
+      <div class="border-b px-4 py-3">
+        <h2 class="text-sm font-semibold text-gray-900">Offline reciente</h2>
+      </div>
+      <div class="divide-y divide-gray-100">
+        {% for event in recent_offline %}
+          <a href="{% url 'assembly:offline_control' event.pk %}" class="block px-4 py-3 hover:bg-gray-50">
+            <p class="text-sm font-semibold text-gray-900">{{ event.external_id }}</p>
+            <p class="mt-1 text-xs text-gray-600">{{ event.station.code }} / {{ event.unit_serial_number }} / {{ event.get_status_display }}</p>
+          </a>
+        {% empty %}
+          <p class="px-4 py-5 text-sm text-gray-500">Sin eventos offline recientes.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -26,9 +26,10 @@
   </div>
 
   <section class="mb-4 overflow-x-auto rounded-lg border bg-white">
-    <div class="grid min-w-[680px] grid-cols-6 divide-x divide-gray-100 text-sm">
+    <div class="grid min-w-[800px] grid-cols-7 divide-x divide-gray-100 text-sm">
       <div class="px-4 py-3"><p class="text-xs uppercase tracking-wide text-gray-500">Planes activos</p><p class="mt-1 text-lg font-semibold text-gray-900">{{ active_plan_count }}</p></div>
       <div class="px-4 py-3"><p class="text-xs uppercase tracking-wide text-gray-500">En secuencia</p><p class="mt-1 text-lg font-semibold text-gray-900">{{ active_queue_count }}</p></div>
+      <div class="px-4 py-3"><p class="text-xs uppercase tracking-wide text-gray-500">Balanceos</p><p class="mt-1 text-lg font-semibold text-gray-900">{{ calculated_balance_count }}</p></div>
       <div class="px-4 py-3"><p class="text-xs uppercase tracking-wide text-gray-500">En proceso</p><p class="mt-1 text-lg font-semibold text-gray-900">{{ in_process_count }}</p></div>
       <div class="px-4 py-3"><p class="text-xs uppercase tracking-wide text-gray-500">Calidad pendiente</p><p class="mt-1 text-lg font-semibold text-amber-700">{{ pending_quality_count }}</p></div>
       <div class="px-4 py-3"><p class="text-xs uppercase tracking-wide text-gray-500">Retrabajos abiertos</p><p class="mt-1 text-lg font-semibold text-red-700">{{ open_rework_count }}</p></div>
@@ -41,6 +42,12 @@
   <section class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
     {% if perms.assembly.view_productionqueueitem %}
       <a href="{% url 'assembly:queue_list' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50"><p class="font-semibold text-gray-900">Secuencia</p><p class="mt-1 text-sm text-gray-600">Orden de ejecucion y prioridad por linea.</p></a>
+    {% endif %}
+    {% if perms.assembly.view_linebalancestudy %}
+      <a href="{% url 'assembly:balance_list' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50"><p class="font-semibold text-gray-900">Balanceo</p><p class="mt-1 text-sm text-gray-600">Carga por estacion contra takt y capacidad.</p></a>
+    {% endif %}
+    {% if perms.assembly.view_andonsignal or perms.assembly.view_productiondowntime or perms.assembly.view_stationofflineevent or perms.assembly.view_modelmixplan or perms.assembly.view_externalmaterialkit %}
+      <a href="{% url 'assembly:advanced' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50"><p class="font-semibold text-gray-900">MES avanzado</p><p class="mt-1 text-sm text-gray-600">Andon, paros, offline, mix y kits.</p></a>
     {% endif %}
     {% if perms.assembly.add_unitstationevent %}
       <a href="{% url 'assembly:station_console' %}" class="rounded-lg border bg-white p-4 hover:border-orange-300 hover:bg-orange-50"><p class="font-semibold text-gray-900">Estacion</p><p class="mt-1 text-sm text-gray-600">Registrar ejecucion de una unidad.</p></a>

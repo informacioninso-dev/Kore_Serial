@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Balanceo | Kore Serial{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-3">
+  {% include "assembly/_nav.html" with nav_key=nav_key %}
+
+  <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Estudio de balanceo</p>
+      <h1 class="mt-1 text-xl font-semibold text-gray-900">{{ study.code }}</h1>
+      <p class="mt-1 text-sm text-gray-600">{{ study.line.code }} - {{ study.version.product.code }} / {{ study.version.code }}</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a href="{{ edit_url }}" class="inline-flex h-9 items-center rounded-lg border px-4 text-sm font-medium text-gray-700 hover:bg-gray-50">Editar</a>
+      <a href="{{ back_url }}" class="inline-flex h-9 items-center rounded-lg border px-4 text-sm font-medium text-gray-700 hover:bg-gray-50">Volver</a>
+    </div>
+  </div>
+
+  <section class="mb-4 grid gap-3 md:grid-cols-4 xl:grid-cols-6">
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Estado</p>
+      <p class="mt-2 text-sm font-semibold text-gray-900">{{ study.get_status_display }}</p>
+      <p class="text-xs text-gray-600">{{ study.generated_at|date:"d/m/Y H:i"|default:"Sin calculo" }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Takt objetivo</p>
+      <p class="mt-2 text-lg font-semibold text-gray-900">{{ snapshot.target_takt_display|default:"-" }}</p>
+      <p class="text-xs text-gray-600">Meta de salida</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Ciclo linea</p>
+      <p class="mt-2 text-lg font-semibold text-gray-900">{{ summary.line_cycle_display|default:"-" }}</p>
+      <p class="text-xs text-gray-600">Mayor carga estandar</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Cuello</p>
+      <p class="mt-2 text-sm font-semibold text-gray-900">{{ summary.bottleneck_station_code|default:"-" }}</p>
+      <p class="text-xs text-gray-600">{{ summary.bottleneck_station_name|default:"Sin datos" }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Eficiencia</p>
+      <p class="mt-2 text-lg font-semibold text-gray-900">{% if summary.balance_efficiency_percent %}{{ summary.balance_efficiency_percent }}%{% else %}-{% endif %}</p>
+      <p class="text-xs text-gray-600">Balance de estaciones</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Capacidad</p>
+      <p class="mt-2 text-lg font-semibold text-gray-900">{{ summary.capacity_units_per_shift|default:"-" }}</p>
+      <p class="text-xs text-gray-600">u/turno</p>
+    </div>
+  </section>
+
+  <section class="mb-4 grid gap-4 lg:grid-cols-[1fr_340px]">
+    <div class="rounded-lg border bg-white p-4">
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-sm font-semibold text-gray-900">Carga por estacion</h2>
+          <p class="mt-1 text-xs text-gray-500">Plan: {{ study.planned_units }} unidades / turno {{ snapshot.shift_duration_display|default:"-" }}</p>
+        </div>
+        {% if can_calculate %}
+          <form method="post">
+            {% csrf_token %}
+            {% if action_form.non_field_errors %}
+              <div class="mb-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">{{ action_form.non_field_errors }}</div>
+            {% endif %}
+            <button type="submit" name="action" value="calculate" class="h-9 rounded-lg bg-orange-600 px-4 text-sm font-semibold text-white hover:bg-orange-700">Calcular balanceo</button>
+          </form>
+        {% endif %}
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">
+            <tr>
+              <th class="px-4 py-3">Estacion</th>
+              <th class="px-4 py-3">Pasos</th>
+              <th class="px-4 py-3">Estandar</th>
+              <th class="px-4 py-3">Carga turno</th>
+              <th class="px-4 py-3">Capacidad</th>
+              <th class="px-4 py-3">Takt real</th>
+              <th class="px-4 py-3">Estado</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            {% for station in station_rows %}
+              <tr>
+                <td class="px-4 py-3 align-top">
+                  <p class="font-semibold text-gray-900">{{ station.station_code }}</p>
+                  <p class="text-xs text-gray-500">{{ station.station_name }}</p>
+                </td>
+                <td class="px-4 py-3 align-top text-gray-700">
+                  {% for step in station.steps %}
+                    <p class="text-xs"><span class="font-medium text-gray-900">#{{ step.sequence }}</span> {{ step.name }} <span class="text-gray-500">{{ step.expected_display }}</span></p>
+                  {% empty %}
+                    <span class="text-xs text-gray-400">Sin pasos de ruta</span>
+                  {% endfor %}
+                </td>
+                <td class="px-4 py-3 align-top text-gray-700">
+                  <p class="font-medium text-gray-900">{{ station.standard_seconds_display }}</p>
+                  <p class="text-xs text-gray-500">Takt {{ station.target_takt_display }}</p>
+                </td>
+                <td class="px-4 py-3 align-top text-gray-700">
+                  <p class="font-medium text-gray-900">{{ station.load_seconds_display }}</p>
+                  <div class="mt-2 h-1.5 w-28 overflow-hidden rounded-full bg-gray-100">
+                    <div class="h-full rounded-full {% if station.status == 'BOTTLENECK' %}bg-red-500{% elif station.status == 'UNDERLOADED' %}bg-amber-400{% else %}bg-emerald-500{% endif %}" style="width: {{ station.load_percent|default:0 }}%"></div>
+                  </div>
+                  <p class="mt-1 text-xs text-gray-500">{{ station.load_percent|default:"0" }}%</p>
+                </td>
+                <td class="px-4 py-3 align-top text-gray-700">
+                  <p class="font-medium text-gray-900">{{ station.capacity_units|default:"-" }}</p>
+                  <p class="text-xs text-gray-500">u/turno</p>
+                </td>
+                <td class="px-4 py-3 align-top text-gray-700">
+                  <p class="font-medium text-gray-900">{{ station.real_takt_display|default:"-" }}</p>
+                  <p class="text-xs text-gray-500">{{ station.completed_count }} completadas</p>
+                </td>
+                <td class="px-4 py-3 align-top">
+                  <span class="inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium {% if station.status == 'BOTTLENECK' %}border-red-200 bg-red-50 text-red-700{% elif station.status == 'UNDERLOADED' %}border-amber-200 bg-amber-50 text-amber-700{% else %}border-emerald-200 bg-emerald-50 text-emerald-700{% endif %}">
+                    {% if station.status == "BOTTLENECK" %}Cuello{% elif station.status == "UNDERLOADED" %}Holgura{% else %}Balanceada{% endif %}
+                  </span>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="7" class="px-4 py-5 text-center text-sm text-gray-500">Calcula el estudio para ver estaciones.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <section class="rounded-lg border bg-white p-4">
+        <h2 class="text-sm font-semibold text-gray-900">Parametros</h2>
+        <div class="mt-3 space-y-2 text-sm text-gray-700">
+          <p><span class="block text-xs font-medium uppercase tracking-wide text-gray-500">Ruta</span>{% if snapshot.route %}{{ snapshot.route.code }}-{{ snapshot.route.revision }}{% elif study.route %}{{ study.route.code }}-{{ study.route.revision }}{% else %}Automatica{% endif %}</p>
+          <p><span class="block text-xs font-medium uppercase tracking-wide text-gray-500">Plan</span>{% if study.production_plan %}{{ study.production_plan.code }}{% else %}-{% endif %}</p>
+          <p><span class="block text-xs font-medium uppercase tracking-wide text-gray-500">Datos reales</span>{% if snapshot.actual_period.start %}{{ snapshot.actual_period.start }} a {{ snapshot.actual_period.end }}{% else %}No aplicados{% endif %}</p>
+          <p><span class="block text-xs font-medium uppercase tracking-wide text-gray-500">Notas</span>{{ study.notes|default:"-" }}</p>
+        </div>
+      </section>
+
+      <section class="rounded-lg border bg-white p-4">
+        <h2 class="text-sm font-semibold text-gray-900">Recomendaciones</h2>
+        <div class="mt-3 space-y-3">
+          {% for item in recommendations %}
+            <div class="rounded-lg border p-3 {% if item.tone == 'danger' %}border-red-200 bg-red-50{% elif item.tone == 'warning' %}border-amber-200 bg-amber-50{% else %}border-emerald-200 bg-emerald-50{% endif %}">
+              <p class="text-sm font-semibold {% if item.tone == 'danger' %}text-red-800{% elif item.tone == 'warning' %}text-amber-800{% else %}text-emerald-800{% endif %}">{{ item.title }}</p>
+              <p class="mt-1 text-xs text-gray-700">{{ item.body }}</p>
+            </div>
+          {% empty %}
+            <p class="text-sm text-gray-500">Calcula el estudio para generar recomendaciones.</p>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <section class="rounded-lg border bg-white">
+    <div class="border-b px-4 py-3">
+      <h2 class="text-sm font-semibold text-gray-900">Simulacion de redistribucion</h2>
+    </div>
+    <div class="divide-y divide-gray-100">
+      {% for move in simulation %}
+        <div class="grid gap-3 px-4 py-3 text-sm md:grid-cols-[1fr_140px_1fr]">
+          <div>
+            <p class="font-semibold text-gray-900">{{ move.source_station_code }}</p>
+            <p class="text-xs text-gray-500">{{ move.source_station_name }}</p>
+          </div>
+          <div class="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-center">
+            <p class="text-sm font-semibold text-orange-800">{{ move.seconds_display }}</p>
+            <p class="text-xs text-orange-700">redistribuir</p>
+          </div>
+          <div>
+            <p class="font-semibold text-gray-900">{{ move.target_station_name }}</p>
+            <p class="text-xs text-gray-500">{{ move.reason }}</p>
+          </div>
+        </div>
+      {% empty %}
+        <p class="px-4 py-5 text-sm text-gray-500">Sin movimientos sugeridos.</p>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

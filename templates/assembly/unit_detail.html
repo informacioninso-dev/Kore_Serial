@@ -11,6 +11,12 @@
       <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Expediente de unidad</p>
       <h1 class="mt-1 text-xl font-semibold text-gray-900">{{ unit.serial_number }}</h1>
       <p class="mt-1 text-sm text-gray-600">{{ unit.version.product.code }} / {{ unit.version.code }} - {{ unit.version.name }}</p>
+      {% if unit.production_order %}
+        <p class="mt-1 text-sm text-gray-600">
+          OP
+          <a href="{% url 'assembly:order_detail' unit.production_order.pk %}" class="font-semibold text-orange-700 hover:underline">{{ unit.production_order.code }}</a>
+        </p>
+      {% endif %}
       {% if unit.production_plan %}
         <p class="mt-1 text-sm text-gray-600">
           Plan
@@ -25,6 +31,9 @@
     </div>
     <div class="flex flex-wrap gap-2">
       {% include "assembly/_status_badge.html" with unit=unit %}
+      {% if perms.assembly.add_productionmeasurement %}
+        <a href="{% url 'assembly:measurement_create' %}?unit={{ unit.pk }}" class="inline-flex h-8 items-center rounded-lg bg-orange-600 px-3 text-xs font-medium text-white hover:bg-orange-700">Nueva medicion</a>
+      {% endif %}
       {% if perms.assembly.change_serializedunit %}
         <a href="{% url 'assembly:unit_update' unit.pk %}" class="inline-flex h-8 items-center rounded-lg border px-3 text-xs font-medium text-gray-700 hover:bg-gray-50">Editar</a>
       {% endif %}
@@ -45,6 +54,10 @@
       <p class="mt-2 text-2xl font-semibold text-gray-900">{{ quality_gates|length }}</p>
     </div>
     <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Mediciones</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ measurements|length }}</p>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
       <p class="text-xs font-medium uppercase tracking-wide text-gray-500">As-built</p>
       <p class="mt-2 text-sm font-semibold {% if as_built_issues %}text-red-700{% else %}text-emerald-700{% endif %}">
         {% if as_built_issues %}Pendiente{% else %}Completo{% endif %}
@@ -57,6 +70,17 @@
       <p class="text-sm font-semibold text-red-800">Pendientes as-built</p>
       <ul class="mt-2 list-inside list-disc text-sm text-red-700">
         {% for issue in as_built_issues %}
+          <li>{{ issue }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if measurement_issues %}
+    <section class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
+      <p class="text-sm font-semibold text-red-800">Pendientes de medicion</p>
+      <ul class="mt-2 list-inside list-disc text-sm text-red-700">
+        {% for issue in measurement_issues %}
           <li>{{ issue }}</li>
         {% endfor %}
       </ul>
@@ -102,6 +126,45 @@
           {% empty %}
             <tr>
               <td colspan="6" class="px-4 py-5 text-center text-sm text-gray-500">Sin componentes requeridos configurados.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mb-4 rounded-lg border bg-white">
+    <div class="border-b px-4 py-3">
+      <h2 class="text-sm font-semibold text-gray-900">Mediciones productivas</h2>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">
+          <tr>
+            <th class="px-4 py-3">Parametro</th>
+            <th class="px-4 py-3">Valor</th>
+            <th class="px-4 py-3">Rango</th>
+            <th class="px-4 py-3">Estacion</th>
+            <th class="px-4 py-3">Resultado</th>
+            <th class="px-4 py-3">Origen</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for measurement in measurements %}
+            <tr>
+              <td class="px-4 py-3 text-gray-700">
+                <span class="font-medium text-gray-900">{{ measurement.code }}</span>
+                <span class="block text-xs text-gray-500">{{ measurement.name }}</span>
+              </td>
+              <td class="px-4 py-3 text-gray-700">{{ measurement.display_value }}</td>
+              <td class="px-4 py-3 text-gray-700">{{ measurement.display_range }}</td>
+              <td class="px-4 py-3 text-gray-700">{{ measurement.station.code }}</td>
+              <td class="px-4 py-3 text-gray-700">{{ measurement.get_result_display }}</td>
+              <td class="px-4 py-3 text-gray-700">{{ measurement.get_origin_display }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6" class="px-4 py-5 text-center text-sm text-gray-500">Sin mediciones registradas.</td>
             </tr>
           {% endfor %}
         </tbody>

@@ -104,7 +104,51 @@
                 </div>
               </div>
               {% if step.instructions %}
-                <div class="mt-3 rounded-lg border border-gray-100 bg-white p-3 text-sm text-gray-700">{{ step.instructions }}</div>
+                <div class="mt-3 rounded-lg border border-gray-100 bg-white p-3">
+                  <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Instrucciones</p>
+                  <p class="mt-1 text-sm text-gray-700">{{ step.instructions }}</p>
+                </div>
+              {% endif %}
+              {% if step.safety_notes or step.acceptance_criteria or step.media_reference %}
+                <div class="mt-3 grid gap-3 md:grid-cols-3">
+                  <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                    <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Seguridad</p>
+                    <p class="mt-1 text-sm text-gray-700">{{ step.safety_notes|default:"Sin notas" }}</p>
+                  </div>
+                  <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                    <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Aceptacion</p>
+                    <p class="mt-1 text-sm text-gray-700">{{ step.acceptance_criteria|default:"Sin criterios" }}</p>
+                  </div>
+                  <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                    <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Referencia</p>
+                    <p class="mt-1 text-sm text-gray-700">{{ step.media_reference|default:"-" }}</p>
+                  </div>
+                </div>
+              {% endif %}
+              {% if step.parameters.all %}
+                <div class="mt-3 rounded-lg border bg-white">
+                  <div class="border-b px-3 py-2">
+                    <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Parametros esperados</p>
+                  </div>
+                  <div class="divide-y divide-gray-100">
+                    {% for parameter in step.parameters.all %}
+                      <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
+                        <div>
+                          <p class="font-semibold text-gray-900">{{ parameter.code }} - {{ parameter.name }}</p>
+                          <p class="text-xs text-gray-600">
+                            {{ parameter.get_origin_display }} / {{ parameter.unit|default:"sin unidad" }}
+                            {% if parameter.min_value or parameter.max_value %}
+                              / Min {{ parameter.min_value|default:"-" }} / Max {{ parameter.max_value|default:"-" }}
+                            {% endif %}
+                          </p>
+                        </div>
+                        {% if perms.assembly.add_productionmeasurement %}
+                          <a href="{% url 'assembly:measurement_create' %}?unit={{ unit.pk }}&parameter={{ parameter.pk }}" class="inline-flex rounded-lg border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">Medir</a>
+                        {% endif %}
+                      </div>
+                    {% endfor %}
+                  </div>
+                </div>
               {% endif %}
             {% else %}
               <p class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">La unidad no tiene paso activo para esta estacion.</p>

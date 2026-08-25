@@ -4,12 +4,17 @@ from django.dispatch import receiver
 from core.audit import log_operational_event
 
 from .models import (
+    AndonSignal,
+    ExternalMaterialKit,
     InstalledComponent,
+    ModelMixPlan,
     ProductionQueueItem,
+    ProductionDowntime,
     QualityGate,
     ReleaseApproval,
     ReworkOrder,
     SerializedUnit,
+    StationOfflineEvent,
     UnitStationEvent,
 )
 
@@ -91,6 +96,90 @@ def log_production_queue_item(sender, instance, created, **kwargs):
                 "route": instance.route.code,
                 "priority": instance.priority,
             },
+        )
+
+
+@receiver(post_save, sender=ModelMixPlan)
+def log_model_mix_plan(sender, instance, created, **kwargs):
+    if created:
+        log_operational_event(
+            module="PRODUCTION",
+            action="CREATE",
+            actor=instance.created_by,
+            obj=instance,
+            document_type="Mix de modelos",
+            document_code=instance.code,
+            related_obj=instance.line,
+            related_code=instance.line.code,
+            to_status=instance.status,
+        )
+
+
+@receiver(post_save, sender=ExternalMaterialKit)
+def log_external_material_kit(sender, instance, created, **kwargs):
+    if created:
+        log_operational_event(
+            module="INVENTORY",
+            action="CREATE",
+            actor=instance.created_by,
+            obj=instance,
+            document_type="Kit externo",
+            document_code=instance.code,
+            related_obj=instance.production_plan or instance.line,
+            related_code=instance.production_plan.code if instance.production_plan_id else (instance.line.code if instance.line_id else ""),
+            to_status=instance.status,
+            metadata={"external_system": instance.external_system, "external_reference": instance.external_reference},
+        )
+
+
+@receiver(post_save, sender=AndonSignal)
+def log_andon_signal(sender, instance, created, **kwargs):
+    if created:
+        log_operational_event(
+            module="PRODUCTION",
+            action="CREATE",
+            actor=instance.opened_by or instance.created_by,
+            obj=instance,
+            document_type="Andon",
+            document_code=instance.code,
+            related_obj=instance.station or instance.line,
+            related_code=instance.station.code if instance.station_id else instance.line.code,
+            to_status=instance.status,
+            metadata={"severity": instance.severity, "source": instance.source},
+        )
+
+
+@receiver(post_save, sender=ProductionDowntime)
+def log_production_downtime(sender, instance, created, **kwargs):
+    if created:
+        log_operational_event(
+            module="PRODUCTION",
+            action="CREATE",
+            actor=instance.opened_by or instance.created_by,
+            obj=instance,
+            document_type="Paro de produccion",
+            document_code=instance.code,
+            related_obj=instance.station or instance.line,
+            related_code=instance.station.code if instance.station_id else instance.line.code,
+            to_status=instance.status,
+            metadata={"cause_category": instance.cause_category, "cause_code": instance.cause_code},
+        )
+
+
+@receiver(post_save, sender=StationOfflineEvent)
+def log_station_offline_event(sender, instance, created, **kwargs):
+    if created:
+        log_operational_event(
+            module="PRODUCTION",
+            action="CREATE",
+            actor=instance.created_by,
+            obj=instance,
+            document_type="Evento offline",
+            document_code=instance.external_id,
+            related_obj=instance.station,
+            related_code=instance.station.code,
+            to_status=instance.status,
+            metadata={"event_type": instance.event_type, "unit_serial_number": instance.unit_serial_number},
         )
 
 

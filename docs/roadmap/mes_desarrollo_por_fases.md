@@ -246,6 +246,8 @@ Entregables:
 
 ## Fase 11 - Balanceo de linea
 
+Estado: implementacion inicial.
+
 Objetivo: ajustar la carga de trabajo contra capacidad real y takt objetivo.
 
 Entregables:
@@ -257,7 +259,22 @@ Entregables:
 - Comparacion takt objetivo contra takt real.
 - Recomendaciones de balanceo por linea, producto o version.
 
+Criterios de salida:
+
+- Produccion permite listar, crear, editar y recalcular estudios de balanceo.
+- Cada estudio define linea, version, ruta o plan, unidades planificadas,
+  duracion de turno, takt objetivo y ventana opcional de datos reales.
+- El calculo agrupa tiempos estandar por estacion desde pasos activos de ruta.
+- La pantalla identifica cuello de botella, eficiencia de balance y capacidad
+  estimada por turno.
+- El estudio compara takt objetivo contra takt real cuando existen eventos
+  completados en el periodo.
+- El sistema guarda snapshot y recomendaciones auditables para revisar cambios
+  sin perder el resultado calculado.
+
 ## Fase 12 - MES avanzado
+
+Estado: implementacion inicial.
 
 Objetivo: robustez industrial.
 
@@ -269,3 +286,62 @@ Entregables:
 - Sincronizacion posterior.
 - Modelos mixtos.
 - Integracion avanzada con kits CKD, inventario y planificacion externa.
+
+Criterios de salida:
+
+- Produccion expone un tablero de MES avanzado con Andon, paros, offline, mix
+  de modelos y kits externos.
+- Las senales Andon pueden abrirse, reconocerse, resolverse o cancelarse con
+  actor, fecha y bitacora operativa.
+- Los paros registran linea, estacion, causa, duracion, evidencia y cierre.
+- Los eventos offline se almacenan con identificador externo y pueden
+  sincronizarse despues creando `UnitStationEvent` con origen `OFFLINE`.
+- La API MES recibe eventos offline para terminales o recolectores que trabajen
+  con cortes de red.
+- El mix de modelos permite agrupar versiones distintas en una misma linea y
+  generar planes de produccion relacionados.
+- Los kits externos modelan material CKD o referencias de sistemas externos,
+  inicialmente B22, con estado y cantidades.
+
+## Fase 13 - Cierre funcional MES
+
+Estado: implementacion inicial.
+
+Objetivo: completar la columna vertebral del MES antes de pasar a WMS, Edge o
+Connect.
+
+Entregables:
+
+- Jerarquia de planta: planta, area, linea, estacion y equipos.
+- Orden de produccion formal como origen de planes, unidades y avance.
+- Instrucciones digitales por paso: operacion, seguridad, criterio de
+  aceptacion y referencia documental.
+- Parametros productivos por paso con origen esperado: manual, PLC, maquina,
+  API, OPC UA, MQTT o sensor.
+- Mediciones productivas por unidad, estacion y parametro, con validacion de
+  rango y resultado.
+- Bloqueo de liberacion cuando faltan mediciones obligatorias o la ultima
+  medicion esta fuera de rango.
+- Calidad enriquecida con codigo de defecto, clasificacion, severidad, causa
+  raiz y area responsable.
+- Busqueda inversa de genealogia para ubicar unidades afectadas por serial,
+  lote, parte o nombre de componente.
+- API MES para registrar mediciones desde terminales o recolectores.
+- Populate demo con OP, planta, area, parametros y mediciones coherentes.
+
+Criterios de salida:
+
+- Produccion permite listar, crear, editar y consultar OP.
+- Configuracion permite mantener plantas, areas y parametros productivos.
+- Un plan puede quedar ligado a una OP y trasladar esa OP a unidades generadas
+  o vinculadas.
+- El expediente de unidad muestra OP, plan, mediciones, pendientes de medicion
+  y genealogia as-built.
+- La consola de estacion muestra instrucciones digitales y parametros esperados
+  del paso actual.
+- La API `/api/assembly/v1/measurements/` registra una medicion y calcula su
+  resultado.
+- La liberacion aprobada falla si existen parametros obligatorios pendientes o
+  fuera de rango.
+- `/produccion/genealogia/` permite buscar componentes y ver unidades
+  impactadas.

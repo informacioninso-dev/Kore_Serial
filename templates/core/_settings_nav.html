@@ -14,6 +14,12 @@
     {% if is_tenant_admin or perms.assembly.view_productversion %}
       <a href="{% url 'assembly:version_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'versions' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Versiones</a>
     {% endif %}
+    {% if is_tenant_admin or perms.assembly.view_plant %}
+      <a href="{% url 'assembly:plant_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'plants' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Plantas</a>
+    {% endif %}
+    {% if is_tenant_admin or perms.assembly.view_plantarea %}
+      <a href="{% url 'assembly:area_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'areas' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Areas</a>
+    {% endif %}
     {% if is_tenant_admin or perms.assembly.view_assemblyline %}
       <a href="{% url 'assembly:line_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'lines' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Lineas</a>
     {% endif %}
@@ -25,6 +31,9 @@
     {% endif %}
     {% if is_tenant_admin or perms.assembly.view_assemblyroutestep %}
       <a href="{% url 'assembly:step_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'steps' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Pasos</a>
+    {% endif %}
+    {% if is_tenant_admin or perms.assembly.view_routestepparameter %}
+      <a href="{% url 'assembly:parameter_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'parameters' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Parametros</a>
     {% endif %}
     {% if is_tenant_admin or perms.assembly.view_routestepcomponentrequirement %}
       <a href="{% url 'assembly:requirement_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'requirements' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Requerimientos</a>
