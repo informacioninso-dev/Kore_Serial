@@ -33,17 +33,17 @@ Fases implementadas:
 - **Fase 4 - Retrabajo controlado:** implementacion inicial.
 - **Fase 5 - Planificacion de produccion:** implementacion inicial.
 - **Fase 6 - Secuenciacion de linea:** implementacion inicial.
+- **Fase 7 - Integracion con equipos:** implementacion inicial.
+- **Fase 8 - Panel de planta:** implementacion inicial.
 
 Fases no implementadas todavia:
 
-- **Fase 7 - Integracion con equipos:** pendiente.
-- **Fase 8 - Panel de planta:** pendiente.
 - **Fase 9 - API MES formal:** pendiente.
 - **Fase 10 - Indicadores MES:** pendiente.
 - **Fase 11 - Balanceo de linea:** pendiente.
 - **Fase 12 - MES avanzado:** pendiente.
 
-Siguiente fase recomendada: **Fase 7 - Integracion con equipos**.
+Siguiente fase recomendada: **Fase 9 - API MES formal**.
 
 ## Modulo Produccion
 

@@ -1,0 +1,52 @@
+<div id="plant-dashboard"
+     hx-get="{% url 'assembly:dashboard_status' %}{% if selected_line %}?line={{ selected_line }}{% endif %}"
+     hx-trigger="every 20s"
+     hx-swap="outerHTML">
+  {% if dashboard_alerts %}
+    <section class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+      <div class="flex items-center justify-between gap-3"><h2 class="text-sm font-semibold text-red-800">Alertas de planta</h2><span class="text-xs font-medium text-red-700">{{ dashboard_alerts|length }} activa{{ dashboard_alerts|length|pluralize:"s" }}</span></div>
+      <ul class="mt-2 grid gap-1 text-sm text-red-800 md:grid-cols-2">{% for alert in dashboard_alerts %}<li>{{ alert }}</li>{% endfor %}</ul>
+    </section>
+  {% endif %}
+
+  {% if dashboard_lines %}
+    <section class="space-y-4">
+      {% for panel in dashboard_lines %}
+        <div class="overflow-x-auto rounded-lg border bg-white">
+          <div class="flex min-w-[760px] items-center justify-between border-b bg-gray-50 px-4 py-3">
+            <div><h2 class="text-sm font-semibold text-gray-900">{{ panel.line.code }} - {{ panel.line.name }}</h2><p class="mt-0.5 text-xs text-gray-500">{{ panel.queue_count }} en cola | {{ panel.in_process_count }} en proceso</p></div>
+            {% if perms.assembly.view_productionqueueitem %}<a href="{% url 'assembly:station_queue' %}" class="rounded-lg border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-white">Ver cola</a>{% endif %}
+          </div>
+          <table class="min-w-[760px] w-full text-sm">
+            <thead class="border-b text-left text-xs font-semibold uppercase tracking-wide text-gray-600"><tr><th class="px-4 py-2.5">Estacion</th><th class="px-4 py-2.5">Andon</th><th class="px-4 py-2.5">Unidad actual</th><th class="px-4 py-2.5 text-center">Cola</th><th class="px-4 py-2.5 text-center">Calidad</th><th class="px-4 py-2.5 text-center">Retrabajo</th><th class="px-4 py-2.5">Equipo</th></tr></thead>
+            <tbody class="divide-y divide-gray-100">
+              {% for data in panel.stations %}
+                <tr class="hover:bg-gray-50">
+                  <td class="px-4 py-2.5"><span class="font-medium text-gray-900">{{ data.station.code }}</span><span class="block text-xs text-gray-500">{{ data.station.name }}</span></td>
+                  <td class="px-4 py-2.5"><span class="inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium {% if data.andon.tone == 'danger' %}border-red-200 bg-red-50 text-red-700{% elif data.andon.tone == 'warning' %}border-amber-200 bg-amber-50 text-amber-700{% elif data.andon.tone == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-700{% else %}border-gray-200 bg-gray-50 text-gray-700{% endif %}">{{ data.andon.label }}</span></td>
+                  <td class="px-4 py-2.5">{% with item=data.items.0 %}{% if item %}{% if perms.assembly.view_productionqueueitem %}<a href="{% url 'assembly:queue_control' item.pk %}" class="font-medium text-orange-700 hover:underline">#{{ item.sequence }} {{ item.unit.serial_number }}</a>{% else %}<span class="font-medium text-gray-900">#{{ item.sequence }} {{ item.unit.serial_number }}</span>{% endif %}<span class="block text-xs text-gray-500">{{ item.get_status_display }} | {{ item.get_priority_display }}</span>{% else %}<span class="text-gray-400">-</span>{% endif %}{% endwith %}</td>
+                  <td class="px-4 py-2.5 text-center text-gray-700">{{ data.items|length }}</td>
+                  <td class="px-4 py-2.5 text-center">{% if data.quality_count %}<span class="font-medium text-amber-700">{{ data.quality_count }}</span>{% else %}<span class="text-gray-400">0</span>{% endif %}</td>
+                  <td class="px-4 py-2.5 text-center">{% if data.rework_count %}<span class="font-medium text-red-700">{{ data.rework_count }}</span>{% else %}<span class="text-gray-400">0</span>{% endif %}</td>
+                  <td class="px-4 py-2.5 text-xs">{% if data.equipment_issues %}<span class="font-medium text-red-700">{{ data.equipment_issues|join:", " }}</span>{% else %}<span class="text-gray-500">Disponible</span>{% endif %}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endfor %}
+    </section>
+  {% else %}
+    <div class="rounded-lg border border-dashed bg-white p-6 text-center text-sm text-gray-500">No hay lineas activas para mostrar.</div>
+  {% endif %}
+
+  {% if dashboard_active_units %}
+    <section class="mt-4 overflow-x-auto rounded-lg border bg-white">
+      <div class="border-b px-4 py-3"><h2 class="text-sm font-semibold text-gray-900">Unidades en proceso</h2></div>
+      <table class="min-w-[680px] w-full text-sm">
+        <thead class="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-600"><tr><th class="px-4 py-2.5">Unidad</th><th class="px-4 py-2.5">Linea</th><th class="px-4 py-2.5">Proxima estacion</th><th class="px-4 py-2.5">Estado</th></tr></thead>
+        <tbody class="divide-y divide-gray-100">{% for entry in dashboard_active_units %}<tr class="hover:bg-gray-50"><td class="px-4 py-2.5 font-medium text-gray-900">{{ entry.item.unit.serial_number }}<span class="block text-xs font-normal text-gray-500">{{ entry.item.unit.version.product.code }} / {{ entry.item.unit.version.code }}</span></td><td class="px-4 py-2.5 text-gray-700">{{ entry.item.line.code }}</td><td class="px-4 py-2.5 text-gray-700">{% if entry.next_station %}{{ entry.next_station.code }}{% else %}Completa{% endif %}</td><td class="px-4 py-2.5 text-gray-700">{{ entry.item.unit.get_status_display }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </section>
+  {% endif %}
+</div>

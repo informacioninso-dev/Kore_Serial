@@ -4,8 +4,10 @@ from django.core.exceptions import ValidationError
 from django.test import Client
 from django.utils import timezone
 from django_tenants.test.cases import TenantTestCase
+from rest_framework.test import APIClient
+from rest_framework_simplejwt.tokens import AccessToken
 
-from core.models import OperationalAuditEvent
+from core.models import EquipmentIntegration, OperationalAuditEvent
 from tenants.models import TenantMembership
 
 from .models import (
@@ -15,6 +17,8 @@ from .models import (
     AssemblyRouteStep,
     AssemblyStation,
     ComponentTraceability,
+    EquipmentInboundEvent,
+    EquipmentInboundEventStatus,
     InstalledComponent,
     ProductVersion,
     ProductionPlan,
@@ -783,6 +787,192 @@ class SerializedUnitTests(TenantTestCase):
         unit.refresh_from_db()
         self.assertEqual(unit.status, UnitStatus.REGISTERED)
         self.assertFalse(UnitStationEvent.objects.filter(unit=unit, station=station).exists())
+
+    def test_equipment_api_processes_a_station_event_with_jwt(self):
+        self.grant_permissions("add_equipmentinboundevent")
+        unit = self.create_unit("SER-EQ-001")
+        station, _route, step = self.create_station_route_step()
+        equipment = EquipmentIntegration.objects.create(
+            code="TORQUE-01",
+            name="Atornilladora 01",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        station.equipment.add(equipment)
+        client = APIClient(HTTP_HOST=self.get_test_tenant_domain())
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(self.user)}")
+
+        response = client.post(
+            "/api/assembly/equipment-events/",
+            {
+                "external_id": "collector-001",
+                "equipment_code": equipment.code,
+                "unit_serial_number": unit.serial_number,
+                "operator_username": self.user.username,
+                "event_type": StationEventType.STARTED,
+                "payload": {"result": "OK", "torque_nm": 120},
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["status"], EquipmentInboundEventStatus.PROCESSED)
+        inbound_event = EquipmentInboundEvent.objects.get(external_id="collector-001")
+        self.assertEqual(inbound_event.equipment, equipment)
+        self.assertEqual(inbound_event.station, station)
+        self.assertEqual(inbound_event.unit, unit)
+        self.assertEqual(inbound_event.station_event.route_step, step)
+        self.assertEqual(inbound_event.station_event.source, "EQUIPMENT")
+        unit.refresh_from_db()
+        self.assertEqual(unit.status, UnitStatus.IN_PROCESS)
+
+    def test_equipment_api_is_idempotent_for_collector_retries(self):
+        self.grant_permissions("add_equipmentinboundevent")
+        unit = self.create_unit("SER-EQ-002")
+        station, _route, _step = self.create_station_route_step()
+        equipment = EquipmentIntegration.objects.create(
+            code="SCANNER-01",
+            name="Scanner 01",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        station.equipment.add(equipment)
+        client = APIClient(HTTP_HOST=self.get_test_tenant_domain())
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(self.user)}")
+        payload = {
+            "external_id": "collector-retry-001",
+            "equipment_code": equipment.code,
+            "unit_serial_number": unit.serial_number,
+            "operator_username": self.user.username,
+            "event_type": StationEventType.STARTED,
+        }
+
+        first = client.post("/api/assembly/equipment-events/", payload, format="json")
+        second = client.post("/api/assembly/equipment-events/", payload, format="json")
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(UnitStationEvent.objects.filter(unit=unit, source="EQUIPMENT").count(), 1)
+
+    def test_equipment_api_records_rejection_for_unavailable_equipment(self):
+        self.grant_permissions("add_equipmentinboundevent")
+        unit = self.create_unit("SER-EQ-003")
+        station, _route, _step = self.create_station_route_step()
+        equipment = EquipmentIntegration.objects.create(
+            code="TEST-01",
+            name="Banco de prueba 01",
+            is_active=False,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        station.equipment.add(equipment)
+        client = APIClient(HTTP_HOST=self.get_test_tenant_domain())
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(self.user)}")
+
+        response = client.post(
+            "/api/assembly/equipment-events/",
+            {
+                "external_id": "collector-rejected-001",
+                "equipment_code": equipment.code,
+                "unit_serial_number": unit.serial_number,
+                "operator_username": self.user.username,
+                "event_type": StationEventType.STARTED,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 422)
+        inbound_event = EquipmentInboundEvent.objects.get(external_id="collector-rejected-001")
+        self.assertEqual(inbound_event.status, EquipmentInboundEventStatus.REJECTED)
+        self.assertIn("no habilitado", inbound_event.result_detail)
+        self.assertFalse(UnitStationEvent.objects.filter(unit=unit, source="EQUIPMENT").exists())
+
+    def test_plant_dashboard_groups_station_state_and_andon_alerts(self):
+        self.grant_permissions("view_productionqueueitem")
+        station, route, step = self.create_station_route_step()
+        plan = ProductionPlan.objects.create(
+            code="PLAN-PANEL",
+            version=self.version,
+            line=station.line,
+            planned_date=timezone.localdate(),
+            shift="Turno A",
+            target_quantity=1,
+            status=ProductionPlanStatus.RELEASED,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        unit = self.create_unit("SER-PANEL-001", UnitStatus.IN_PROCESS)
+        unit.production_plan = plan
+        unit.save(update_fields=["production_plan", "updated_at"])
+        ProductionQueueItem.objects.create(
+            production_plan=plan,
+            unit=unit,
+            line=station.line,
+            route=route,
+            sequence=1,
+            status=ProductionQueueStatus.HOLD,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        QualityGate.objects.create(
+            unit=unit,
+            station=station,
+            route_step=step,
+            status=QualityGateStatus.PENDING,
+            is_blocking=True,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        ReworkOrder.objects.create(
+            unit=unit,
+            station_detected=station,
+            route_step_detected=step,
+            defect_code="DEF-PANEL",
+            description="Ajuste pendiente.",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        equipment = EquipmentIntegration.objects.create(
+            code="PANEL-EQ-01",
+            name="Equipo de panel",
+            is_active=False,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        station.equipment.add(equipment)
+
+        response = self.client.get("/produccion/", {"line": station.line_id})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Panel de planta")
+        self.assertContains(response, "Equipo no habilitado")
+        self.assertContains(response, "SER-PANEL-001")
+        self.assertContains(response, "PANEL-EQ-01")
+        self.assertContains(response, 'hx-trigger="every 20s"', html=False)
+
+    def test_plant_dashboard_status_fragment_filters_by_line(self):
+        station, _route, _step = self.create_station_route_step()
+        other_line = AssemblyLine.objects.create(
+            code="LINE-2",
+            name="Linea secundaria",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        AssemblyStation.objects.create(
+            line=other_line,
+            code="ST-02",
+            name="Revision final",
+            sequence=1,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+
+        response = self.client.get("/produccion/panel/estado/", {"line": station.line_id})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "LINE-1 - Linea principal")
+        self.assertNotContains(response, "LINE-2 - Linea secundaria")
+        self.assertContains(response, 'id="plant-dashboard"', html=False)
 
     def test_production_module_screens_render_with_permissions(self):
         unit = self.create_unit("SER-0500")

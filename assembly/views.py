@@ -1,3 +1,4 @@
+from collections import defaultdict
 from urllib.parse import urlencode
 
 from django.contrib import messages
@@ -60,6 +61,7 @@ from .models import (
     UnitStationEvent,
     UnitStatus,
 )
+from .services import apply_station_event_effects
 
 
 PER_PAGE_CHOICES = (20, 50, 100)
@@ -229,6 +231,105 @@ class ProductionDashboardView(LoginRequiredMixin, ModulePermissionMixin, Templat
     template_name = "assembly/dashboard.html"
     permission_required = "assembly.view_serializedunit"
 
+    def dashboard_context(self):
+        selected_line = self.request.GET.get("line", "").strip()
+        available_lines = list(AssemblyLine.objects.filter(is_active=True).order_by("code"))
+        lines = available_lines
+        if selected_line:
+            lines = [line for line in lines if str(line.pk) == selected_line]
+        line_ids = [line.pk for line in lines]
+        stations = list(
+            AssemblyStation.objects.filter(line_id__in=line_ids, is_active=True)
+            .select_related("line")
+            .prefetch_related("equipment")
+            .order_by("line__code", "sequence", "code")
+        )
+        station_data = {
+            station.pk: {
+                "station": station,
+                "items": [],
+                "quality_count": 0,
+                "rework_count": 0,
+                "equipment_issues": [],
+            }
+            for station in stations
+        }
+        active_queue_statuses = [
+            ProductionQueueStatus.QUEUED,
+            ProductionQueueStatus.READY,
+            ProductionQueueStatus.IN_PROGRESS,
+            ProductionQueueStatus.HOLD,
+        ]
+        queue_items = list(
+            ProductionQueueItem.objects.filter(line_id__in=line_ids, status__in=active_queue_statuses)
+            .select_related("unit__version__product", "production_plan", "line", "route")
+            .order_by("line__code", "sequence", "id")
+        )
+        next_steps = {}
+        for item in queue_items:
+            next_step = item.next_route_step()
+            next_steps[item.unit_id] = next_step
+            if next_step and next_step.station_id in station_data:
+                station_data[next_step.station_id]["items"].append(item)
+
+        for gate in QualityGate.objects.filter(station_id__in=station_data, is_blocking=True).exclude(
+            status__in=[QualityGateStatus.PASSED, QualityGateStatus.WAIVED],
+        ):
+            station_data[gate.station_id]["quality_count"] += 1
+        for rework in ReworkOrder.objects.filter(station_detected_id__in=station_data).exclude(
+            status__in=[ReworkStatus.CLOSED, ReworkStatus.CANCELLED],
+        ):
+            station_data[rework.station_detected_id]["rework_count"] += 1
+
+        line_panels = defaultdict(lambda: {"line": None, "stations": [], "queue_count": 0, "in_process_count": 0})
+        alerts = []
+        for station in stations:
+            data = station_data[station.pk]
+            data["equipment_issues"] = [equipment.code for equipment in station.equipment.all() if not equipment.can_be_used]
+            head_item = data["items"][0] if data["items"] else None
+            has_hold = any(item.status == ProductionQueueStatus.HOLD for item in data["items"])
+            if data["equipment_issues"]:
+                data["andon"] = {"tone": "danger", "label": "Equipo no habilitado"}
+                alerts.append(f"{station.code}: equipo no habilitado ({', '.join(data['equipment_issues'])}).")
+            elif has_hold:
+                data["andon"] = {"tone": "danger", "label": "Cola retenida"}
+                alerts.append(f"{station.code}: hay unidades retenidas en la cola.")
+            elif data["rework_count"]:
+                data["andon"] = {"tone": "danger", "label": "Retrabajo abierto"}
+                alerts.append(f"{station.code}: {data['rework_count']} retrabajo(s) abierto(s).")
+            elif data["quality_count"]:
+                data["andon"] = {"tone": "warning", "label": "Calidad pendiente"}
+                alerts.append(f"{station.code}: {data['quality_count']} control(es) de calidad pendiente(s).")
+            elif head_item and (head_item.status == ProductionQueueStatus.IN_PROGRESS or head_item.unit.status == UnitStatus.IN_PROCESS):
+                data["andon"] = {"tone": "success", "label": "En ejecucion"}
+            elif head_item:
+                data["andon"] = {"tone": "neutral", "label": "En espera"}
+            else:
+                data["andon"] = {"tone": "neutral", "label": "Sin trabajo"}
+
+            line_panel = line_panels[station.line_id]
+            line_panel["line"] = station.line
+            line_panel["stations"].append(data)
+            line_panel["queue_count"] += len(data["items"])
+            line_panel["in_process_count"] += sum(
+                1 for item in data["items"] if item.unit.status == UnitStatus.IN_PROCESS
+            )
+
+        active_units = []
+        for item in queue_items:
+            if item.unit.status not in {UnitStatus.IN_PROCESS, UnitStatus.QUALITY_HOLD, UnitStatus.REWORK}:
+                continue
+            next_step = next_steps.get(item.unit_id)
+            active_units.append({"item": item, "next_station": next_step.station if next_step else None})
+
+        return {
+            "dashboard_lines": list(line_panels.values()),
+            "dashboard_alerts": alerts[:12],
+            "dashboard_active_units": active_units[:12],
+            "selected_line": selected_line,
+            "line_choices": available_lines,
+        }
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update(
@@ -259,7 +360,15 @@ class ProductionDashboardView(LoginRequiredMixin, ModulePermissionMixin, Templat
                 ).exclude(status__in=[QualityGateStatus.PASSED, QualityGateStatus.WAIVED]).count(),
             }
         )
+        context.update(self.dashboard_context())
         return context
+
+
+class ProductionDashboardStatusView(ProductionDashboardView):
+    template_name = "assembly/_dashboard_status.html"
+
+    def get_context_data(self, **kwargs):
+        return self.dashboard_context()
 
 
 class StationConsoleView(LoginRequiredMixin, ModulePermissionMixin, TemplateView):
@@ -429,9 +538,7 @@ class StationConsoleView(LoginRequiredMixin, ModulePermissionMixin, TemplateView
             created_by=request.user,
             updated_by=request.user,
         )
-        self._set_unit_status(unit, station, step, event_type, request.user)
-        if event_type == StationEventType.REWORK_OUT:
-            self._open_rework(unit, station, step, request.user, defect_code, notes)
+        apply_station_event_effects(unit, station, step, event_type, request.user, defect_code, notes)
 
         messages.success(request, f"Evento registrado: {self.action_labels.get(event_type, event_type)}.")
         return self._redirect_to_console(station, serial_number)

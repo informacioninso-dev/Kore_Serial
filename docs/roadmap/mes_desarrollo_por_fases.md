@@ -186,6 +186,8 @@ Criterios de salida:
 
 ## Fase 7 - Integracion con equipos
 
+Estado: implementacion inicial.
+
 Objetivo: recibir datos reales desde planta mediante API y recolectores.
 
 Entregables:
@@ -197,6 +199,8 @@ Entregables:
 - Asociacion automatica equipo-estacion-unidad-evento.
 
 ## Fase 8 - Panel de planta
+
+Estado: implementacion inicial.
 
 Objetivo: dar visibilidad operacional a supervisores.
 
