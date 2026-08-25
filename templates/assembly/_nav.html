@@ -20,6 +20,7 @@
     {% endif %}
     {% if perms.assembly.view_unitstationevent %}
       <a href="{% url 'assembly:event_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'events' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Eventos</a>
+      <a href="{% url 'assembly:metrics' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'metrics' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Indicadores</a>
     {% endif %}
     {% if perms.assembly.view_installedcomponent %}
       <a href="{% url 'assembly:component_list' %}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if active == 'components' %}bg-orange-600 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Componentes</a>

@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import date, timedelta
 from urllib.parse import urlencode
 
 from django.contrib import messages
@@ -61,6 +62,7 @@ from .models import (
     UnitStationEvent,
     UnitStatus,
 )
+from .metrics import build_production_metrics
 from .services import apply_station_event_effects
 
 
@@ -369,6 +371,40 @@ class ProductionDashboardStatusView(ProductionDashboardView):
 
     def get_context_data(self, **kwargs):
         return self.dashboard_context()
+
+
+class ProductionMetricsView(LoginRequiredMixin, ModulePermissionMixin, TemplateView):
+    template_name = "assembly/production_metrics.html"
+    permission_required = "assembly.view_unitstationevent"
+
+    def _date_param(self, name, default):
+        value = self.request.GET.get(name, "").strip()
+        if not value:
+            return default
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            return default
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        end_date = self._date_param("date_to", timezone.localdate())
+        start_date = self._date_param("date_from", end_date - timedelta(days=29))
+        if start_date > end_date:
+            start_date, end_date = end_date, start_date
+        line_id = self.request.GET.get("line", "").strip()
+        context.update(
+            {
+                "nav_key": "metrics",
+                "title": "Indicadores MES",
+                "date_from": start_date.isoformat(),
+                "date_to": end_date.isoformat(),
+                "selected_line": line_id,
+                "line_choices": AssemblyLine.objects.filter(is_active=True).order_by("code"),
+                "metrics": build_production_metrics(start_date, end_date, line_id or None),
+            }
+        )
+        return context
 
 
 class StationConsoleView(LoginRequiredMixin, ModulePermissionMixin, TemplateView):

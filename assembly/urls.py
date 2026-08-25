@@ -27,6 +27,7 @@ from .views import (
     ProductVersionUpdateView,
     ProductionDashboardView,
     ProductionDashboardStatusView,
+    ProductionMetricsView,
     ProductionPlanControlView,
     ProductionPlanCreateView,
     ProductionPlanListView,
@@ -66,6 +67,7 @@ app_name = "assembly"
 urlpatterns = [
     path("", ProductionDashboardView.as_view(), name="index"),
     path("panel/estado/", ProductionDashboardStatusView.as_view(), name="dashboard_status"),
+    path("indicadores/", ProductionMetricsView.as_view(), name="metrics"),
     path("estacion/", StationConsoleView.as_view(), name="station_console"),
     path("unidades/", SerializedUnitListView.as_view(), name="unit_list"),
     path("unidades/nueva/", SerializedUnitCreateView.as_view(), name="unit_create"),

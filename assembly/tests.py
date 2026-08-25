@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError
+from datetime import timedelta
 from django.test import Client
 from django.utils import timezone
 from django_tenants.test.cases import TenantTestCase
@@ -1081,6 +1082,82 @@ class SerializedUnitTests(TenantTestCase):
         self.assertTrue(response.data["permissions"]["install_components"])
         self.assertFalse(response.data["permissions"]["review_quality"])
 
+    def test_production_metrics_calculate_cycle_takt_rework_and_productivity(self):
+        self.grant_permissions("view_unitstationevent")
+        station, route, step = self.create_station_route_step()
+        station.takt_time_seconds = 60
+        station.save(update_fields=["takt_time_seconds", "updated_at"])
+        plan = ProductionPlan.objects.create(
+            code="PLAN-METRICS",
+            version=self.version,
+            line=station.line,
+            planned_date=timezone.localdate(),
+            shift="Turno A",
+            target_quantity=3,
+            status=ProductionPlanStatus.RELEASED,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        first_unit = self.create_unit("SER-MET-001")
+        second_unit = self.create_unit("SER-MET-002")
+        base_time = timezone.now() - timedelta(minutes=5)
+        for unit, started_at, completed_at in [
+            (first_unit, base_time, base_time + timedelta(seconds=60)),
+            (second_unit, base_time + timedelta(seconds=120), base_time + timedelta(seconds=180)),
+        ]:
+            UnitStationEvent.objects.create(
+                unit=unit,
+                station=station,
+                route_step=step,
+                event_type=StationEventType.STARTED,
+                event_at=started_at,
+                operator=self.user,
+                created_by=self.user,
+                updated_by=self.user,
+            )
+            UnitStationEvent.objects.create(
+                unit=unit,
+                station=station,
+                route_step=step,
+                event_type=StationEventType.COMPLETED,
+                event_at=completed_at,
+                operator=self.user,
+                created_by=self.user,
+                updated_by=self.user,
+            )
+        UnitStationEvent.objects.create(
+            unit=second_unit,
+            station=station,
+            route_step=step,
+            event_type=StationEventType.FAILED,
+            event_at=base_time + timedelta(seconds=190),
+            operator=self.user,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        ReworkOrder.objects.create(
+            unit=second_unit,
+            station_detected=station,
+            route_step_detected=step,
+            defect_code="MET-DEF-01",
+            description="Falla para indicador.",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+
+        response = self.client.get(
+            "/produccion/indicadores/",
+            {"date_from": timezone.localdate().isoformat(), "date_to": timezone.localdate().isoformat()},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Indicadores MES")
+        self.assertContains(response, "1 min 00 s")
+        self.assertContains(response, "2 min 00 s")
+        self.assertContains(response, "MET-DEF-01")
+        self.assertContains(response, ">2<", html=False)
+        self.assertContains(response, ">3<", html=False)
+
     def test_production_module_screens_render_with_permissions(self):
         unit = self.create_unit("SER-0500")
         station, _route, step = self.create_station_route_step()
@@ -1157,6 +1234,7 @@ class SerializedUnitTests(TenantTestCase):
             "/produccion/pasos/",
             "/produccion/requerimientos/",
             "/produccion/eventos/",
+            "/produccion/indicadores/",
             "/produccion/componentes/",
             "/produccion/calidad/",
             f"/produccion/calidad/{gate.pk}/revisar/",

@@ -231,6 +231,8 @@ Entregables:
 
 ## Fase 10 - Indicadores MES
 
+Estado: implementacion inicial.
+
 Objetivo: medir desempeno de planta.
 
 Entregables:

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Indicadores MES | Kore Serial{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-3">
+  {% include "assembly/_nav.html" with nav_key=nav_key %}
+
+  <div class="mb-4">
+    <h1 class="text-xl font-semibold text-gray-900">{{ title }}</h1>
+  </div>
+
+  <form method="get" class="mb-4 flex flex-wrap items-end gap-3 rounded-lg border bg-white p-3">
+    <label class="text-xs font-medium text-gray-700">Desde<input type="date" name="date_from" value="{{ date_from }}" class="mt-1 block h-9 rounded-lg border border-gray-300 px-3 text-sm"></label>
+    <label class="text-xs font-medium text-gray-700">Hasta<input type="date" name="date_to" value="{{ date_to }}" class="mt-1 block h-9 rounded-lg border border-gray-300 px-3 text-sm"></label>
+    <label class="min-w-52 text-xs font-medium text-gray-700">Linea<select name="line" class="mt-1 block h-9 w-full rounded-lg border border-gray-300 px-3 text-sm"><option value="">Todas las lineas</option>{% for line in line_choices %}<option value="{{ line.pk }}" {% if selected_line|stringformat:"s" == line.pk|stringformat:"s" %}selected{% endif %}>{{ line.code }} - {{ line.name }}</option>{% endfor %}</select></label>
+    <button type="submit" class="h-9 rounded-lg bg-orange-600 px-4 text-sm font-semibold text-white hover:bg-orange-700">Aplicar</button>
+  </form>
+
+  <section class="mb-4 overflow-x-auto rounded-lg border bg-white">
+    <div class="grid min-w-[720px] grid-cols-5 divide-x divide-gray-100 text-sm">
+      <div class="px-4 py-3"><p class="text-xs uppercase tracking-wide text-gray-500">Ciclos medidos</p><p class="mt-1 text-lg font-semibold text-gray-900">{{ metrics.summary.cycle_count }}</p></div>
+      <div class="px-4 py-3"><p class="text-xs uppercase tracking-wide text-gray-500">Unidades terminadas</p><p class="mt-1 text-lg font-semibold text-gray-900">{{ metrics.summary.completed_units }}</p></div>
+      <div class="px-4 py-3"><p class="text-xs uppercase tracking-wide text-gray-500">Fallas</p><p class="mt-1 text-lg font-semibold text-red-700">{{ metrics.summary.failure_count }}</p></div>
+      <div class="px-4 py-3"><p class="text-xs uppercase tracking-wide text-gray-500">Rendimiento vs takt</p><p class="mt-1 text-lg font-semibold text-gray-900">{% if metrics.summary.performance_percent is not None %}{{ metrics.summary.performance_percent }}%{% else %}-{% endif %}</p></div>
+      <div class="px-4 py-3"><p class="text-xs uppercase tracking-wide text-gray-500">Calidad base OEE</p><p class="mt-1 text-lg font-semibold text-gray-900">{% if metrics.summary.quality_percent is not None %}{{ metrics.summary.quality_percent }}%{% else %}-{% endif %}</p></div>
+    </div>
+  </section>
+
+  <section class="mb-4 overflow-x-auto rounded-lg border bg-white">
+    <div class="border-b px-4 py-3"><h2 class="text-sm font-semibold text-gray-900">Tiempo y takt por estacion</h2></div>
+    <table class="min-w-[900px] w-full text-sm"><thead class="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-600"><tr><th class="px-4 py-2.5">Linea</th><th class="px-4 py-2.5">Estacion</th><th class="px-4 py-2.5">Tiempo promedio por unidad</th><th class="px-4 py-2.5">Takt real</th><th class="px-4 py-2.5">Takt objetivo</th><th class="px-4 py-2.5">Variacion</th><th class="px-4 py-2.5 text-right">Completados</th><th class="px-4 py-2.5 text-right">Fallas</th></tr></thead><tbody class="divide-y divide-gray-100">{% for metric in metrics.station_metrics %}<tr class="hover:bg-gray-50"><td class="px-4 py-2.5 text-gray-700">{{ metric.line_code }}</td><td class="px-4 py-2.5"><span class="font-medium text-gray-900">{{ metric.station_code }}</span><span class="block text-xs text-gray-500">{{ metric.station_name }}</span></td><td class="px-4 py-2.5 text-gray-700">{{ metric.average_cycle }}</td><td class="px-4 py-2.5 text-gray-700">{{ metric.real_takt }}</td><td class="px-4 py-2.5 text-gray-700">{{ metric.target_takt }}</td><td class="px-4 py-2.5 text-gray-700">{{ metric.takt_variance }}</td><td class="px-4 py-2.5 text-right text-gray-700">{{ metric.completed_count }}</td><td class="px-4 py-2.5 text-right {% if metric.failure_count %}font-medium text-red-700{% else %}text-gray-500{% endif %}">{{ metric.failure_count }}</td></tr>{% empty %}<tr><td colspan="8" class="px-4 py-5 text-center text-gray-500">No hay estaciones activas para el filtro.</td></tr>{% endfor %}</tbody></table>
+  </section>
+
+  <section class="grid gap-4 lg:grid-cols-2">
+    <div class="overflow-x-auto rounded-lg border bg-white"><div class="border-b px-4 py-3"><h2 class="text-sm font-semibold text-gray-900">Productividad por linea</h2></div><table class="min-w-full text-sm"><thead class="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-600"><tr><th class="px-4 py-2.5">Linea</th><th class="px-4 py-2.5 text-right">Terminadas</th><th class="px-4 py-2.5 text-right">Planificadas</th><th class="px-4 py-2.5 text-right">Cumplimiento</th></tr></thead><tbody class="divide-y divide-gray-100">{% for metric in metrics.productivity %}<tr><td class="px-4 py-2.5 font-medium text-gray-900">{{ metric.line_code }}</td><td class="px-4 py-2.5 text-right text-gray-700">{{ metric.completed }}</td><td class="px-4 py-2.5 text-right text-gray-700">{{ metric.planned }}</td><td class="px-4 py-2.5 text-right text-gray-700">{% if metric.fulfillment_percent is not None %}{{ metric.fulfillment_percent }}%{% else %}-{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+    <div class="overflow-x-auto rounded-lg border bg-white"><div class="border-b px-4 py-3"><h2 class="text-sm font-semibold text-gray-900">Retrabajos por causa</h2></div><table class="min-w-full text-sm"><thead class="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-600"><tr><th class="px-4 py-2.5">Causa</th><th class="px-4 py-2.5 text-right">Casos</th></tr></thead><tbody class="divide-y divide-gray-100">{% for metric in metrics.rework_metrics %}<tr><td class="px-4 py-2.5 font-medium text-gray-900">{{ metric.defect_code }}</td><td class="px-4 py-2.5 text-right text-red-700">{{ metric.count }}</td></tr>{% empty %}<tr><td colspan="2" class="px-4 py-5 text-center text-gray-500">Sin retrabajos en el periodo.</td></tr>{% endfor %}</tbody></table></div>
+  </section>
+
+  <p class="mt-4 text-xs text-gray-500">Base OEE: rendimiento y calidad se calculan con eventos registrados. La disponibilidad requiere registrar paros y causas, prevista para la Fase 12.</p>
+</div>
+{% endblock %}
