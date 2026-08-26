@@ -12,7 +12,19 @@ from rest_framework_simplejwt.tokens import AccessToken
 from core.models import Location, OperationalAuditEvent, Unit, UnitCategory, Warehouse, WarehouseType
 from tenants.models import TenantMembership
 
-from assembly.models import AssembledProduct, ProductVersion, SerializedUnit
+from assembly.models import (
+    AssembledProduct,
+    AssemblyLine,
+    AssemblyRoute,
+    AssemblyRouteStep,
+    AssemblyStation,
+    ComponentTraceability,
+    ProductVersion,
+    RouteStepComponentRequirement,
+    SerializedUnit,
+    StationEventType,
+)
+from assembly.services import record_station_event
 
 from .models import (
     InboundReceipt,
@@ -21,6 +33,7 @@ from .models import (
     InventoryMovement,
     InventoryState,
     Material,
+    MaterialLot,
     MaterialSerial,
     MaterialTraceability,
     AssemblyKit,
@@ -30,7 +43,10 @@ from .models import (
     LocationOperationalType,
     PickMissionStatus,
     PickTask,
+    PokaYokeAttempt,
+    PokaYokeAttemptResult,
     ReplenishmentRule,
+    AssemblyMaterialConsumption,
     WmsLocationProfile,
 )
 from .services import (
@@ -45,6 +61,7 @@ from .services import (
     release_kit,
     release_pick_mission,
     transfer_inventory,
+    process_component_scan,
 )
 
 
@@ -138,6 +155,32 @@ class WMSTests(TenantTestCase):
         product = AssembledProduct.objects.create(code="PRODUCT-001", name="Producto", created_by=self.user, updated_by=self.user)
         version = ProductVersion.objects.create(product=product, code="V1", name="Version 1", created_by=self.user, updated_by=self.user)
         return SerializedUnit.objects.create(version=version, serial_number=serial_number, created_by=self.user, updated_by=self.user)
+
+    def create_scan_context(self, material_code="PART-001"):
+        product = AssembledProduct.objects.create(code="SCAN-PRODUCT", name="Producto scan", created_by=self.user, updated_by=self.user)
+        version = ProductVersion.objects.create(product=product, code="SCAN-V1", name="Version scan", created_by=self.user, updated_by=self.user)
+        unit = SerializedUnit.objects.create(version=version, serial_number="SCAN-UNIT-001", created_by=self.user, updated_by=self.user)
+        line = AssemblyLine.objects.create(code="SCAN-LINE", name="Linea scan", created_by=self.user, updated_by=self.user)
+        station = AssemblyStation.objects.create(line=line, code="SCAN-ST", name="Estacion scan", sequence=1, created_by=self.user, updated_by=self.user)
+        route = AssemblyRoute.objects.create(version=version, code="SCAN-ROUTE", name="Ruta scan", created_by=self.user, updated_by=self.user)
+        step = AssemblyRouteStep.objects.create(route=route, station=station, sequence=1, name="Instalacion", requires_component_trace=True, created_by=self.user, updated_by=self.user)
+        requirement = RouteStepComponentRequirement.objects.create(
+            route_step=step,
+            part_code=material_code,
+            part_name="Parte de prueba",
+            quantity_required=Decimal("1"),
+            traceability=ComponentTraceability.LOT,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        record_station_event(
+            actor=self.user,
+            unit_serial_number=unit.serial_number,
+            station_code=station.code,
+            event_type=StationEventType.STARTED,
+            external_reference="START-SCAN-001",
+        )
+        return unit, station, requirement
 
     def test_receipt_by_lot_creates_quarantine_balance_and_audit_event(self):
         material = self.create_material()
@@ -391,3 +434,95 @@ class WMSTests(TenantTestCase):
         task.refresh_from_db()
         self.assertEqual(task.status, "PICKED")
         self.assertTrue(InventoryBalance.objects.filter(location=self.line_side_location, material=material, quantity=Decimal("1")).exists())
+
+    def test_component_scan_creates_as_built_consumption_and_inventory_movement(self):
+        material = self.create_material(code="PART-001", traceability=MaterialTraceability.LOT)
+        lot = MaterialLot.objects.create(material=material, number="LOT-SCAN-001", created_by=self.user, updated_by=self.user)
+        adjust_inventory(
+            actor=self.user,
+            material=material,
+            quantity=Decimal("1"),
+            location=self.line_side_location,
+            state=InventoryState.AVAILABLE,
+            direction="IN",
+            lot=lot,
+            reason="Abastecimiento linea",
+        )
+        unit, station, requirement = self.create_scan_context(material.code)
+
+        consumption, created = process_component_scan(
+            actor=self.user,
+            unit_serial_number=unit.serial_number,
+            station_code=station.code,
+            material_code=material.code,
+            source_location_code=self.line_side_location.code,
+            lot_number=lot.number,
+            external_reference="SCAN-ACCEPT-001",
+        )
+
+        self.assertTrue(created)
+        self.assertEqual(consumption.installed_component.requirement, requirement)
+        self.assertEqual(consumption.inventory_movement.movement_type, "CONSUMPTION")
+        self.assertFalse(InventoryBalance.objects.filter(material=material, location=self.line_side_location).exists())
+        attempt = PokaYokeAttempt.objects.get(external_reference="SCAN-ACCEPT-001")
+        self.assertEqual(attempt.result, PokaYokeAttemptResult.ACCEPTED)
+        self.assertEqual(attempt.consumption, consumption)
+        self.assertTrue(OperationalAuditEvent.objects.filter(module="WMS", action="CONSUME", document_code=consumption.event_code).exists())
+
+    def test_component_scan_rejects_wrong_material_without_consuming_stock(self):
+        expected = self.create_material(code="PART-EXPECTED", traceability=MaterialTraceability.LOT)
+        wrong = self.create_material(code="PART-WRONG", traceability=MaterialTraceability.LOT)
+        lot = MaterialLot.objects.create(material=wrong, number="LOT-WRONG", created_by=self.user, updated_by=self.user)
+        adjust_inventory(
+            actor=self.user,
+            material=wrong,
+            quantity=Decimal("1"),
+            location=self.line_side_location,
+            state=InventoryState.AVAILABLE,
+            direction="IN",
+            lot=lot,
+            reason="Abastecimiento linea",
+        )
+        unit, station, _requirement = self.create_scan_context(expected.code)
+
+        with self.assertRaises(ValidationError):
+            process_component_scan(
+                actor=self.user,
+                unit_serial_number=unit.serial_number,
+                station_code=station.code,
+                material_code=wrong.code,
+                source_location_code=self.line_side_location.code,
+                lot_number=lot.number,
+                external_reference="SCAN-REJECT-001",
+            )
+
+        self.assertEqual(InventoryBalance.objects.get(material=wrong, location=self.line_side_location).quantity, Decimal("1"))
+        self.assertFalse(AssemblyMaterialConsumption.objects.exists())
+        attempt = PokaYokeAttempt.objects.get(external_reference="SCAN-REJECT-001")
+        self.assertEqual(attempt.result, PokaYokeAttemptResult.REJECTED)
+        self.assertIn("no esta configurado", attempt.reason)
+
+    def test_component_scan_api_is_idempotent_with_terminal_reference(self):
+        self.user.user_permissions.add(Permission.objects.get(codename="add_installedcomponent", content_type__app_label="assembly"))
+        material = self.create_material(code="PART-API", traceability=MaterialTraceability.LOT)
+        lot = MaterialLot.objects.create(material=material, number="LOT-API", created_by=self.user, updated_by=self.user)
+        adjust_inventory(actor=self.user, material=material, quantity=Decimal("1"), location=self.line_side_location, state=InventoryState.AVAILABLE, direction="IN", lot=lot, reason="Abastecimiento API")
+        unit, station, _requirement = self.create_scan_context(material.code)
+        client = APIClient(HTTP_HOST=self.get_test_tenant_domain())
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(self.user)}")
+        payload = {
+            "unit_serial_number": unit.serial_number,
+            "station_code": station.code,
+            "material_code": material.code,
+            "source_location_code": self.line_side_location.code,
+            "lot_number": lot.number,
+            "external_reference": "SCAN-API-001",
+        }
+
+        created = client.post("/api/wms/v1/line-installations/", payload, format="json")
+        repeated = client.post("/api/wms/v1/line-installations/", payload, format="json")
+
+        self.assertEqual(created.status_code, 201)
+        self.assertEqual(repeated.status_code, 200)
+        self.assertEqual(AssemblyMaterialConsumption.objects.count(), 1)
+        self.assertEqual(PokaYokeAttempt.objects.count(), 1)

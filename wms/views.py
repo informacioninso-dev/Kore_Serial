@@ -3,6 +3,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
 from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404
+from django.shortcuts import redirect
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.urls import reverse, reverse_lazy
 from django.views.generic import CreateView, DetailView, FormView, ListView, TemplateView, UpdateView
 
@@ -17,6 +19,7 @@ from .forms import (
     InboundReceiptLineForm,
     InventoryOperationForm,
     KanbanSignalCreateForm,
+    LineInstallationForm,
     MaterialCategoryForm,
     MaterialForm,
     PickMissionForm,
@@ -29,6 +32,7 @@ from .models import (
     AssemblyKit,
     AssemblyKitLine,
     AssemblyKitStatus,
+    AssemblyMaterialConsumption,
     InboundReceipt,
     InboundReceiptLine,
     InventoryBalance,
@@ -44,6 +48,7 @@ from .models import (
     PickMissionStatus,
     PickTask,
     PickTaskStatus,
+    PokaYokeAttemptResult,
     ReplenishmentRule,
     WmsLocationProfile,
 )
@@ -56,6 +61,7 @@ from .services import (
     create_pick_mission,
     deliver_kit,
     fulfill_kanban_signal,
+    process_component_scan,
     receive_receipt_line,
     release_kit,
     release_pick_mission,
@@ -186,6 +192,7 @@ class WMSDashboardView(LoginRequiredMixin, ModulePermissionMixin, TemplateView):
                 "available_quantity": InventoryBalance.objects.filter(state=InventoryState.AVAILABLE).aggregate(total=Sum("quantity"))["total"] or 0,
                 "open_kanban_count": KanbanSignal.objects.filter(status__in=[KanbanSignalStatus.OPEN, KanbanSignalStatus.IN_PROGRESS]).count(),
                 "open_pick_count": PickMission.objects.filter(status__in=[PickMissionStatus.RELEASED, PickMissionStatus.IN_PROGRESS]).count(),
+                "consumption_count": AssemblyMaterialConsumption.objects.count(),
                 "recent_movements": InventoryMovement.objects.select_related("material", "source_location", "destination_location").all()[:8],
             }
         )
@@ -988,3 +995,94 @@ class KanbanSignalCreateView(LoginRequiredMixin, ModulePermissionMixin, FormView
         from django.shortcuts import redirect
 
         return redirect("wms:kanban_signal_detail", pk=signal.pk)
+
+
+class AssemblyMaterialConsumptionListView(WMSListMixin):
+    model = AssemblyMaterialConsumption
+    permission_required = "wms.view_assemblymaterialconsumption"
+    title = "Consumos de ensamble"
+    subtitle = "Evento unico entre as-built MES y descuento fisico de inventario."
+    nav_key = "consumption"
+    columns = ("Fecha", "Evento", "Unidad", "Material", "Origen", "Cantidad")
+    search_fields = (
+        "event_code",
+        "installed_component__unit__serial_number",
+        "installed_component__station__code",
+        "material__code",
+        "lot__number",
+        "serial__number",
+    )
+    filter_specs = ()
+
+    def get_base_queryset(self):
+        return AssemblyMaterialConsumption.objects.select_related(
+            "installed_component__unit",
+            "installed_component__station",
+            "material__base_unit",
+            "source_location__warehouse",
+            "lot",
+            "serial",
+        ).order_by("-consumed_at", "-id")
+
+    def row_for(self, obj):
+        trace = obj.serial.number if obj.serial_id else (obj.lot.number if obj.lot_id else "-")
+        return {
+            "cells": [
+                {"primary": obj.consumed_at.strftime("%d/%m/%Y %H:%M")},
+                {"primary": obj.event_code, "secondary": obj.installed_component.station.code if obj.installed_component.station_id else ""},
+                {"primary": obj.installed_component.unit.serial_number},
+                {"primary": obj.material.code, "secondary": trace},
+                {"primary": obj.source_location.code, "secondary": obj.source_location.warehouse.code},
+                {"primary": f"{obj.inventory_movement.quantity} {obj.material.base_unit.code}"},
+            ]
+        }
+
+
+class LineInstallationView(LoginRequiredMixin, ModulePermissionMixin, FormView):
+    form_class = LineInstallationForm
+    permission_required = "wms.add_assemblymaterialconsumption"
+
+    def _next_url(self, form=None):
+        value = ""
+        if form is not None and form.is_bound:
+            value = form.data.get("next_url", "")
+        if not value:
+            value = self.request.POST.get("next_url", "")
+        if url_has_allowed_host_and_scheme(value, allowed_hosts={self.request.get_host()}):
+            return value
+        return reverse("assembly:station_console")
+
+    def form_valid(self, form):
+        if not self.request.user.has_perm("assembly.add_installedcomponent"):
+            return self.handle_no_permission()
+        data = form.cleaned_data
+        try:
+            consumption, created = process_component_scan(
+                actor=self.request.user,
+                unit_serial_number=data["unit_serial_number"],
+                station_code=data["station_code"],
+                material_code=data["material_code"],
+                source_location_code=data["source_location"].code,
+                quantity=data["quantity"],
+                lot_number=data["lot_number"],
+                material_serial_number=data["material_serial_number"],
+                external_reference=data["external_reference"],
+                notes=data["notes"],
+            )
+        except ValidationError as error:
+            messages.error(self.request, "; ".join(error.messages))
+        else:
+            messages.success(
+                self.request,
+                f"Consumo {consumption.event_code} {'registrado' if created else 'ya procesado'} para la unidad.",
+            )
+        return redirect(self._next_url(form))
+
+    def form_invalid(self, form):
+        message = "; ".join(
+            message
+            for errors in form.errors.values()
+            for message in errors
+        )
+        messages.error(self.request, message or "No se pudo procesar el escaneo.")
+        return redirect(self._next_url(form))

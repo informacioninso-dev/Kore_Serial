@@ -712,6 +712,18 @@ class StationConsoleView(LoginRequiredMixin, ModulePermissionMixin, TemplateView
                 "unit",
                 "operator",
             ).order_by("-event_at", "-id")[:12]
+        component_requirements = []
+        line_feed_locations = []
+        if step is not None:
+            component_requirements = list(step.component_requirements.filter(is_active=True).order_by("part_code"))
+            from wms.models import LocationOperationalType, WmsLocationProfile
+
+            line_feed_locations = list(
+                WmsLocationProfile.objects.filter(
+                    is_active=True,
+                    operational_type__in=[LocationOperationalType.SUPERMARKET, LocationOperationalType.LINE_SIDE],
+                ).select_related("location__warehouse").order_by("location__warehouse__code", "location__code")
+            )
 
         context.update(
             {
@@ -733,6 +745,8 @@ class StationConsoleView(LoginRequiredMixin, ModulePermissionMixin, TemplateView
                     for action in available_actions
                 ],
                 "recent_events": recent_events,
+                "component_requirements": component_requirements,
+                "line_feed_locations": line_feed_locations,
             }
         )
         return context

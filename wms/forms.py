@@ -248,3 +248,24 @@ class KanbanSignalCreateForm(WMSFormMixin, forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["rule"].queryset = ReplenishmentRule.objects.filter(is_active=True).select_related("material", "destination_location").order_by("code")
+
+
+class LineInstallationForm(WMSFormMixin, forms.Form):
+    unit_serial_number = forms.CharField(max_length=120, widget=forms.HiddenInput())
+    station_code = forms.CharField(max_length=50, widget=forms.HiddenInput())
+    material_code = forms.CharField(max_length=80, label="Material escaneado")
+    source_location = forms.ModelChoiceField(queryset=Location.objects.none(), label="Ubicacion de consumo")
+    quantity = forms.DecimalField(max_digits=14, decimal_places=4, min_value=0.0001, initial=1, label="Cantidad")
+    lot_number = forms.CharField(max_length=120, required=False, label="Lote escaneado")
+    material_serial_number = forms.CharField(max_length=120, required=False, label="Serie escaneada")
+    external_reference = forms.CharField(max_length=120, required=False, label="Referencia de terminal")
+    notes = forms.CharField(max_length=240, required=False, label="Notas")
+    next_url = forms.CharField(required=False, widget=forms.HiddenInput())
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["source_location"].queryset = Location.objects.filter(
+            is_active=True,
+            wms_profile__is_active=True,
+            wms_profile__operational_type__in=[LocationOperationalType.SUPERMARKET, LocationOperationalType.LINE_SIDE],
+        ).select_related("warehouse").order_by("warehouse__code", "code")

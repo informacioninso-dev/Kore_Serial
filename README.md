@@ -325,6 +325,7 @@ Fases implementadas:
 - **Fase 13 - Cierre funcional MES:** cerrada para el alcance MES inicial.
 - **Fase 14 - WMS base:** cerrada para el alcance WMS inicial.
 - **Fase 15 - Picking, kitting y line feeding:** cerrada para el alcance inicial de abastecimiento a linea.
+- **Fase 16 - Poka-yoke y consumo automatico:** cerrada para el alcance inicial de validacion y consumo por escaneo.
 
 Fases no implementadas dentro del roadmap MES inicial:
 
@@ -367,6 +368,8 @@ Estado: cerrada para el alcance inicial de abastecimiento a linea.
 ### Fase 16 - Poka-yoke y consumo automatico
 
 Objetivo: evitar errores de ensamble y cerrar la genealogia material.
+
+Estado: cerrada para el alcance inicial de validacion y consumo por escaneo.
 
 - Escaneo de unidad y pieza.
 - Validacion pieza-modelo-version-ruta-estacion.

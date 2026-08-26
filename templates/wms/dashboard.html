@@ -10,13 +10,14 @@
     <h1 class="mt-1 text-2xl font-semibold text-gray-900">Control fisico de materiales</h1>
     <p class="mt-1 text-sm text-gray-600">Recepciones CKD, inventario por ubicacion y movimientos trazables.</p>
   </div>
-  <section class="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
+  <section class="grid gap-3 md:grid-cols-3 lg:grid-cols-7">
     <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Materiales activos</p><p class="mt-2 text-2xl font-semibold">{{ material_count }}</p></div>
     <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Recepciones</p><p class="mt-2 text-2xl font-semibold">{{ receipt_count }}</p></div>
     <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">En cuarentena</p><p class="mt-2 text-2xl font-semibold text-amber-700">{{ quarantine_quantity }}</p></div>
     <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Disponible</p><p class="mt-2 text-2xl font-semibold text-emerald-700">{{ available_quantity }}</p></div>
     <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Picking activo</p><p class="mt-2 text-2xl font-semibold text-orange-700">{{ open_pick_count }}</p></div>
     <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Kanban abierto</p><p class="mt-2 text-2xl font-semibold text-orange-700">{{ open_kanban_count }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Consumos</p><p class="mt-2 text-2xl font-semibold text-emerald-700">{{ consumption_count }}</p></div>
   </section>
   <section class="mt-5 rounded-lg border bg-white">
     <div class="border-b px-4 py-3"><h2 class="text-sm font-semibold">Ultimos movimientos</h2></div>

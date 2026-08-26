@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import InboundReceiptLine, InventoryBalance, InventoryState, Material, MaterialLot, MaterialSerial, PickMission, PickTask
-from .services import adjust_inventory, change_inventory_state, complete_pick_task, receive_receipt_line, transfer_inventory
+from .services import adjust_inventory, change_inventory_state, complete_pick_task, process_component_scan, receive_receipt_line, transfer_inventory
 
 
 class WMSAPIView(APIView):
@@ -42,6 +42,19 @@ class InventoryOperationSerializer(serializers.Serializer):
 class PickTaskCompleteSerializer(serializers.Serializer):
     task_id = serializers.IntegerField(min_value=1)
     reason = serializers.CharField(max_length=240, required=False, allow_blank=True, default="")
+
+
+class ComponentScanSerializer(serializers.Serializer):
+    unit_serial_number = serializers.CharField(max_length=120)
+    station_code = serializers.CharField(max_length=50)
+    material_code = serializers.CharField(max_length=80)
+    source_location_code = serializers.CharField(max_length=30)
+    quantity = serializers.DecimalField(max_digits=14, decimal_places=4, min_value=Decimal("0.0001"), required=False, default=1)
+    lot_number = serializers.CharField(max_length=120, required=False, allow_blank=True, default="")
+    material_serial_number = serializers.CharField(max_length=120, required=False, allow_blank=True, default="")
+    operator_username = serializers.CharField(max_length=150, required=False, allow_blank=True, default="")
+    external_reference = serializers.CharField(max_length=120, required=False, allow_blank=True, default="")
+    notes = serializers.CharField(max_length=240, required=False, allow_blank=True, default="")
 
 
 class MaterialListAPIView(WMSAPIView):
@@ -192,4 +205,29 @@ class PickTaskCompleteAPIView(WMSAPIView):
         return Response(
             {"task_id": task.pk, "mission_code": task.mission.code, "movement_id": movement.pk, "quantity": str(movement.quantity)},
             status=status.HTTP_201_CREATED,
+        )
+
+
+class LineInstallationAPIView(WMSAPIView):
+    required_permission = "wms.add_assemblymaterialconsumption"
+
+    def post(self, request):
+        self.enforce_permission()
+        if not request.user.has_perm("assembly.add_installedcomponent"):
+            raise PermissionDenied("El token no tiene permiso para registrar as-built de componentes.")
+        serializer = ComponentScanSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            consumption, created = process_component_scan(actor=request.user, **serializer.validated_data)
+        except DjangoValidationError as error:
+            raise ValidationError({"detail": error.messages})
+        return Response(
+            {
+                "event_code": consumption.event_code,
+                "created": created,
+                "unit_serial_number": consumption.installed_component.unit.serial_number,
+                "component_id": consumption.installed_component_id,
+                "movement_id": consumption.inventory_movement_id,
+            },
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )

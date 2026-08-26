@@ -1,4 +1,5 @@
 from decimal import Decimal
+from uuid import uuid4
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -15,15 +16,20 @@ from .models import (
     InventoryMovementType,
     InventoryState,
     AssemblyKitStatus,
+    AssemblyMaterialConsumption,
     KanbanSignal,
     KanbanSignalStatus,
+    LocationOperationalType,
     MaterialLot,
+    Material,
     MaterialSerial,
     MaterialTraceability,
     PickMission,
     PickMissionStatus,
     PickTask,
     PickTaskStatus,
+    PokaYokeAttempt,
+    PokaYokeAttemptResult,
     ReplenishmentRule,
     WmsLocationProfile,
 )
@@ -535,3 +541,253 @@ def fulfill_kanban_signal(*, actor, signal):
     signal.save(update_fields=["status", "updated_by", "updated_at"])
     _log_line_feeding_event(actor=actor, obj=signal, action="FULFILL", reason="Reposicion Kanban atendida")
     return signal
+
+
+def _record_poka_yoke_rejection(
+    *,
+    actor,
+    external_reference,
+    scanned_material_code,
+    scanned_lot_number,
+    scanned_serial_number,
+    quantity,
+    reason,
+    unit=None,
+    station=None,
+    requirement=None,
+):
+    attempt = PokaYokeAttempt(
+        external_reference=external_reference,
+        unit=unit,
+        station=station,
+        requirement=requirement,
+        scanned_material_code=scanned_material_code,
+        scanned_lot_number=scanned_lot_number,
+        scanned_serial_number=scanned_serial_number,
+        quantity=quantity,
+        result=PokaYokeAttemptResult.REJECTED,
+        reason=reason,
+        created_by=actor,
+        updated_by=actor,
+    )
+    attempt.full_clean()
+    attempt.save()
+    _log_line_feeding_event(
+        actor=actor,
+        obj=attempt,
+        action="POKA_YOKE_REJECTED",
+        reason=reason,
+        metadata={"material_code": scanned_material_code, "station": station.code if station else ""},
+    )
+    return attempt
+
+
+def process_component_scan(
+    *,
+    actor,
+    unit_serial_number,
+    station_code,
+    material_code,
+    source_location_code,
+    quantity=1,
+    lot_number="",
+    material_serial_number="",
+    operator_username="",
+    external_reference="",
+    notes="",
+):
+    """Aplica poka-yoke y registra as-built + consumo como una sola operacion atomica."""
+    from assembly.models import AssemblyStation, SerializedUnit, StationEventType
+    from assembly.services import _active_operator, current_route_step_for, install_component, latest_station_event
+    from core.models import Location
+
+    external_reference = (external_reference or "").strip() or f"SCAN-{uuid4().hex[:16].upper()}"
+    existing = PokaYokeAttempt.objects.select_related("consumption").filter(external_reference=external_reference).first()
+    if existing is not None:
+        if existing.result == PokaYokeAttemptResult.ACCEPTED:
+            return existing.consumption, False
+        raise ValidationError(existing.reason or "El escaneo ya fue rechazado.")
+
+    quantity = _decimal(quantity)
+    lot_number = (lot_number or "").strip()
+    material_serial_number = (material_serial_number or "").strip()
+    unit = SerializedUnit.objects.filter(serial_number=unit_serial_number).select_related("version").first()
+    station = AssemblyStation.objects.filter(code=station_code, is_active=True).select_related("line").first()
+    material = Material.objects.filter(code=material_code, is_active=True).first()
+    requirement = None
+
+    def reject(reason, requirement=None):
+        _record_poka_yoke_rejection(
+            actor=actor,
+            external_reference=external_reference,
+            unit=unit,
+            station=station,
+            requirement=requirement,
+            scanned_material_code=material_code,
+            scanned_lot_number=lot_number,
+            scanned_serial_number=material_serial_number,
+            quantity=quantity,
+            reason=reason,
+        )
+        raise ValidationError(reason)
+
+    if unit is None:
+        reject(f"Unidad {unit_serial_number} no encontrada.")
+    if station is None:
+        reject(f"Estacion {station_code} no encontrada o inactiva.")
+    if material is None:
+        reject(f"Material {material_code} no encontrado o inactivo.")
+    source_location = Location.objects.filter(code=source_location_code, is_active=True).first()
+    if source_location is None:
+        reject(f"Ubicacion {source_location_code} no encontrada o inactiva.")
+    profile = WmsLocationProfile.objects.filter(location=source_location, is_active=True).first()
+    if profile is None or profile.operational_type not in {LocationOperationalType.SUPERMARKET, LocationOperationalType.LINE_SIDE}:
+        reject("El consumo debe salir de una ubicacion WMS de supermercado o line side.")
+
+    route, step = current_route_step_for(unit)
+    if route is None or step is None or step.station_id != station.pk:
+        reject("La unidad no tiene este paso como operacion actual de la estacion.")
+    latest_event = latest_station_event(unit, station)
+    if latest_event is None or latest_event.event_type not in {StationEventType.STARTED, StationEventType.RESUMED}:
+        reject("La unidad debe estar iniciada en la estacion antes de instalar una pieza.")
+    try:
+        operator = _active_operator(operator_username, actor)
+    except ValueError as error:
+        reject(str(error))
+    if not operator.is_superuser:
+        operator_issue = station.operator_issue_for(operator)
+        if operator_issue:
+            reject(operator_issue)
+
+    requirement = step.component_requirements.filter(part_code=material.code, is_active=True).first()
+    if requirement is None:
+        reject(f"El material {material.code} no esta configurado para {step.name} en {station.code}.")
+
+    lot = None
+    serial = None
+    if material.traceability == MaterialTraceability.LOT:
+        if not lot_number:
+            reject("El material requiere numero de lote.", requirement)
+        lot = MaterialLot.objects.filter(material=material, number=lot_number).first()
+        if lot is None:
+            reject("El lote escaneado no pertenece al material.", requirement)
+    elif lot_number:
+        lot = MaterialLot.objects.filter(material=material, number=lot_number).first()
+        if lot is None:
+            reject("El lote escaneado no pertenece al material.", requirement)
+
+    if material.traceability == MaterialTraceability.SERIAL:
+        if not material_serial_number:
+            reject("El material requiere numero de serie.", requirement)
+        if quantity != Decimal("1"):
+            reject("Un material serializado se instala de una unidad por escaneo.", requirement)
+        serial = MaterialSerial.objects.filter(material=material, number=material_serial_number).select_related("lot").first()
+        if serial is None:
+            reject("La serie escaneada no pertenece al material.", requirement)
+        if lot and serial.lot_id and serial.lot_id != lot.pk:
+            reject("La serie no pertenece al lote escaneado.", requirement)
+        lot = lot or serial.lot
+    elif material_serial_number:
+        reject("El material no admite numero de serie.", requirement)
+
+    traceability_issue = requirement.traceability_issue_for(material_serial_number, lot.number if lot else lot_number)
+    if traceability_issue:
+        reject(f"El componente {traceability_issue}", requirement)
+
+    balance = InventoryBalance.objects.filter(
+        material=material,
+        location=source_location,
+        state=InventoryState.AVAILABLE,
+        lot=lot,
+        serial=serial,
+    ).first()
+    if balance is None or balance.quantity < quantity:
+        reject("No existe saldo disponible suficiente para el material escaneado.", requirement)
+    already_installed = requirement.installed_components.filter(unit=unit).aggregate(total=Sum("quantity"))["total"] or Decimal("0")
+    if already_installed + quantity > requirement.quantity_required:
+        reject("La cantidad escaneada supera el requerimiento pendiente de la unidad.", requirement)
+
+    try:
+        with transaction.atomic():
+            event_code = _next_code("CON", AssemblyMaterialConsumption)
+            component = install_component(
+                actor=actor,
+                unit_serial_number=unit.serial_number,
+                requirement_id=requirement.pk,
+                serial_number=material_serial_number,
+                lot_number=lot.number if lot else "",
+                quantity=quantity,
+                operator_username=operator.username,
+                source_event_id=latest_event.pk,
+                notes=notes,
+            )
+            movement = record_movement(
+                actor=actor,
+                movement_type=InventoryMovementType.CONSUMPTION,
+                material=material,
+                quantity=quantity,
+                source_location=source_location,
+                source_state=InventoryState.AVAILABLE,
+                lot=lot,
+                serial=serial,
+                external_reference=event_code,
+                reason=notes or f"Consumo de ensamble {unit.serial_number} / {station.code}",
+            )
+            consumption = AssemblyMaterialConsumption(
+                event_code=event_code,
+                installed_component=component,
+                material=material,
+                source_location=source_location,
+                lot=lot,
+                serial=serial,
+                inventory_movement=movement,
+                metadata={
+                    "unit_serial_number": unit.serial_number,
+                    "station_code": station.code,
+                    "route_step_id": step.pk,
+                    "requirement_id": requirement.pk,
+                    "operator": operator.username,
+                },
+                created_by=actor,
+                updated_by=actor,
+            )
+            consumption.full_clean()
+            consumption.save()
+            attempt = PokaYokeAttempt(
+                external_reference=external_reference,
+                unit=unit,
+                station=station,
+                requirement=requirement,
+                scanned_material_code=material.code,
+                scanned_lot_number=lot.number if lot else "",
+                scanned_serial_number=serial.number if serial else "",
+                quantity=quantity,
+                result=PokaYokeAttemptResult.ACCEPTED,
+                consumption=consumption,
+                created_by=actor,
+                updated_by=actor,
+            )
+            attempt.full_clean()
+            attempt.save()
+            _log_line_feeding_event(
+                actor=actor,
+                obj=consumption,
+                action="CONSUME",
+                reason=movement.reason,
+                metadata={"poka_yoke_attempt": attempt.pk, "movement_id": movement.pk, "component_id": component.pk},
+            )
+            return consumption, True
+    except ValidationError as error:
+        _record_poka_yoke_rejection(
+            actor=actor,
+            external_reference=external_reference,
+            unit=unit,
+            station=station,
+            requirement=requirement,
+            scanned_material_code=material_code,
+            scanned_lot_number=lot_number,
+            scanned_serial_number=material_serial_number,
+            quantity=quantity,
+            reason="; ".join(error.messages),
+        )
+        raise

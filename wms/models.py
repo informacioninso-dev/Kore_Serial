@@ -43,6 +43,7 @@ class InventoryMovementType(models.TextChoices):
     STATUS_CHANGE = "STATUS_CHANGE", "Cambio de estado"
     ADJUSTMENT_IN = "ADJUSTMENT_IN", "Ajuste positivo"
     ADJUSTMENT_OUT = "ADJUSTMENT_OUT", "Ajuste negativo"
+    CONSUMPTION = "CONSUMPTION", "Consumo de ensamble"
 
 
 class AssemblyKitStatus(models.TextChoices):
@@ -506,3 +507,130 @@ class PickTask(AuditModel):
 
     def __str__(self):
         return f"{self.mission.code} / {self.material.code}"
+
+
+class PokaYokeAttemptResult(models.TextChoices):
+    ACCEPTED = "ACCEPTED", "Aceptado"
+    REJECTED = "REJECTED", "Rechazado"
+
+
+class AssemblyMaterialConsumption(AuditModel):
+    """Evento canonico que une as-built MES y consumo fisico WMS."""
+
+    event_code = models.CharField("Codigo de evento", max_length=120, unique=True)
+    installed_component = models.OneToOneField(
+        "assembly.InstalledComponent",
+        on_delete=models.PROTECT,
+        related_name="wms_consumption",
+        verbose_name="Componente instalado",
+    )
+    material = models.ForeignKey(Material, on_delete=models.PROTECT, related_name="assembly_consumptions", verbose_name="Material")
+    source_location = models.ForeignKey(
+        Location,
+        on_delete=models.PROTECT,
+        related_name="assembly_consumptions",
+        verbose_name="Ubicacion de consumo",
+    )
+    lot = models.ForeignKey(MaterialLot, null=True, blank=True, on_delete=models.PROTECT, related_name="assembly_consumptions", verbose_name="Lote")
+    serial = models.ForeignKey(MaterialSerial, null=True, blank=True, on_delete=models.PROTECT, related_name="assembly_consumptions", verbose_name="Serie")
+    inventory_movement = models.OneToOneField(
+        InventoryMovement,
+        on_delete=models.PROTECT,
+        related_name="assembly_consumption",
+        verbose_name="Movimiento de inventario",
+    )
+    consumed_at = models.DateTimeField("Fecha/hora de consumo", default=timezone.now, db_index=True)
+    metadata = models.JSONField("Datos de integracion", default=dict, blank=True)
+
+    class Meta:
+        ordering = ["-consumed_at", "-id"]
+        verbose_name = "Consumo de material de ensamble"
+        verbose_name_plural = "Consumos de material de ensamble"
+        indexes = [
+            models.Index(fields=["material", "consumed_at"], name="wms_consume_material_time_idx"),
+            models.Index(fields=["source_location", "consumed_at"], name="wms_consume_location_time_idx"),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.installed_component_id and self.material_id and self.installed_component.part_code != self.material.code:
+            raise ValidationError({"material": "El material no coincide con el componente instalado."})
+        if self.lot_id and self.lot.material_id != self.material_id:
+            raise ValidationError({"lot": "El lote no pertenece al material."})
+        if self.serial_id:
+            if self.serial.material_id != self.material_id:
+                raise ValidationError({"serial": "La serie no pertenece al material."})
+            if self.installed_component_id and self.installed_component.serial_number != self.serial.number:
+                raise ValidationError({"serial": "La serie no coincide con la genealogia instalada."})
+        if self.installed_component_id and self.inventory_movement_id:
+            if self.inventory_movement.material_id != self.material_id:
+                raise ValidationError({"inventory_movement": "El movimiento no corresponde al material."})
+            if self.inventory_movement.quantity != self.installed_component.quantity:
+                raise ValidationError({"inventory_movement": "La cantidad consumida no coincide con la cantidad instalada."})
+
+    def __str__(self):
+        return self.event_code
+
+
+class PokaYokeAttempt(AuditModel):
+    external_reference = models.CharField("Referencia de escaneo", max_length=120, unique=True)
+    unit = models.ForeignKey(
+        "assembly.SerializedUnit",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="poka_yoke_attempts",
+        verbose_name="Unidad",
+    )
+    station = models.ForeignKey(
+        "assembly.AssemblyStation",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="poka_yoke_attempts",
+        verbose_name="Estacion",
+    )
+    requirement = models.ForeignKey(
+        "assembly.RouteStepComponentRequirement",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="poka_yoke_attempts",
+        verbose_name="Requerimiento",
+    )
+    scanned_material_code = models.CharField("Material escaneado", max_length=80)
+    scanned_lot_number = models.CharField("Lote escaneado", max_length=120, blank=True)
+    scanned_serial_number = models.CharField("Serie escaneada", max_length=120, blank=True)
+    quantity = models.DecimalField("Cantidad", max_digits=14, decimal_places=4, default=Decimal("1"))
+    result = models.CharField("Resultado", max_length=20, choices=PokaYokeAttemptResult.choices, db_index=True)
+    reason = models.CharField("Motivo", max_length=240, blank=True)
+    consumption = models.OneToOneField(
+        AssemblyMaterialConsumption,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="poka_yoke_attempt",
+        verbose_name="Consumo generado",
+    )
+    attempted_at = models.DateTimeField("Fecha/hora de intento", default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ["-attempted_at", "-id"]
+        verbose_name = "Intento de poka-yoke"
+        verbose_name_plural = "Intentos de poka-yoke"
+        indexes = [
+            models.Index(fields=["result", "attempted_at"], name="wms_poka_result_time_idx"),
+            models.Index(fields=["unit", "attempted_at"], name="wms_poka_unit_time_idx"),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.quantity <= 0:
+            raise ValidationError({"quantity": "La cantidad debe ser mayor a cero."})
+        if self.result == PokaYokeAttemptResult.ACCEPTED and not self.consumption_id:
+            raise ValidationError({"consumption": "Un intento aceptado debe tener consumo asociado."})
+        if self.result == PokaYokeAttemptResult.REJECTED and self.consumption_id:
+            raise ValidationError({"consumption": "Un intento rechazado no puede consumir inventario."})
+
+    def __str__(self):
+        return self.external_reference

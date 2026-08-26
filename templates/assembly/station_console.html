@@ -150,6 +150,28 @@
                   </div>
                 </div>
               {% endif %}
+              {% if component_requirements and perms.wms.add_assemblymaterialconsumption and perms.assembly.add_installedcomponent %}
+                <form method="post" action="{% url 'wms:line_install' %}" class="mt-3 rounded-lg border border-orange-200 bg-orange-50 p-3">
+                  {% csrf_token %}
+                  <input type="hidden" name="unit_serial_number" value="{{ unit.serial_number }}">
+                  <input type="hidden" name="station_code" value="{{ selected_station.code }}">
+                  <input type="hidden" name="next_url" value="{% url 'assembly:station_console' %}?station={{ selected_station.pk }}&serial={{ unit.serial_number }}">
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div><p class="text-xs font-medium uppercase tracking-wide text-orange-700">Poka-yoke y consumo</p><p class="mt-1 text-xs text-gray-600">Solo se acepta material configurado para este paso y con saldo disponible.</p></div>
+                    <span class="rounded-full border border-orange-200 bg-white px-2 py-0.5 text-[11px] font-medium text-orange-700">{{ component_requirements|length }} requerido{{ component_requirements|length|pluralize:"s" }}</span>
+                  </div>
+                  <div class="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <label class="text-xs font-medium text-gray-700">Material escaneado<input name="material_code" list="required-materials" required class="mt-1 h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm"><datalist id="required-materials">{% for requirement in component_requirements %}<option value="{{ requirement.part_code }}">{{ requirement.part_name }}</option>{% endfor %}</datalist></label>
+                    <label class="text-xs font-medium text-gray-700">Ubicacion de consumo<select name="source_location" required class="mt-1 h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm"><option value="">Seleccionar</option>{% for profile in line_feed_locations %}<option value="{{ profile.location.pk }}">{{ profile.location.warehouse.code }} / {{ profile.location.code }}</option>{% endfor %}</select></label>
+                    <label class="text-xs font-medium text-gray-700">Lote<input name="lot_number" class="mt-1 h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm"></label>
+                    <label class="text-xs font-medium text-gray-700">Serie<input name="material_serial_number" class="mt-1 h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm"></label>
+                    <label class="text-xs font-medium text-gray-700">Cantidad<input name="quantity" type="number" min="0.0001" step="0.0001" value="1" required class="mt-1 h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm"></label>
+                    <label class="text-xs font-medium text-gray-700">Referencia terminal<input name="external_reference" class="mt-1 h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm"></label>
+                    <label class="text-xs font-medium text-gray-700 xl:col-span-2">Notas<input name="notes" class="mt-1 h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm"></label>
+                  </div>
+                  <button type="submit" class="mt-3 h-9 rounded-lg bg-orange-600 px-4 text-sm font-semibold text-white hover:bg-orange-700">Escanear e instalar</button>
+                </form>
+              {% endif %}
             {% else %}
               <p class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">La unidad no tiene paso activo para esta estacion.</p>
             {% endif %}
