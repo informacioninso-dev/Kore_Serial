@@ -102,7 +102,7 @@ from .models import (
     UnitStatus,
 )
 from .metrics import build_production_metrics, format_seconds
-from .services import apply_station_event_effects
+from .services import apply_station_event_effects, station_event_issue_for
 
 
 PER_PAGE_CHOICES = (20, 50, 100)
@@ -651,6 +651,11 @@ class StationConsoleView(LoginRequiredMixin, ModulePermissionMixin, TemplateView
         route, step = self._route_step_for(unit, station)
         if route is None or step is None:
             messages.error(request, "La unidad no tiene un paso activo para esta estacion.")
+            return self._redirect_to_console(station, serial_number)
+
+        route_issue = station_event_issue_for(unit, route, step, event_type)
+        if route_issue:
+            messages.error(request, route_issue)
             return self._redirect_to_console(station, serial_number)
 
         last_event = self._latest_station_event(unit, station)

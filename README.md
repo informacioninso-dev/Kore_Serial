@@ -320,7 +320,7 @@ Fases implementadas:
 - **Fase 10 - Indicadores MES:** implementacion inicial.
 - **Fase 11 - Balanceo de linea:** implementacion inicial.
 - **Fase 12 - MES avanzado:** implementacion inicial.
-- **Fase 13 - Cierre funcional MES:** implementacion inicial.
+- **Fase 13 - Cierre funcional MES:** cerrada para el alcance MES inicial.
 
 Fases no implementadas dentro del roadmap MES inicial:
 

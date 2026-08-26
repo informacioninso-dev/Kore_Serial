@@ -74,6 +74,26 @@ def current_route_step_for(unit):
     return route, None
 
 
+def station_event_issue_for(unit, route, step, event_type):
+    """Evita que una unidad salte pasos o continúe durante una retención."""
+    current_route, current_step = current_route_step_for(unit)
+    if current_route is None or current_step is None:
+        return "La unidad no tiene un paso pendiente que pueda ejecutarse."
+    if current_route.pk != route.pk or current_step.pk != step.pk:
+        return (
+            f"El paso actual de la unidad es #{current_step.sequence} "
+            f"{current_step.name} en {current_step.station.code}."
+        )
+    if event_type not in {StationEventType.REWORK_OUT, StationEventType.REWORK_IN}:
+        if unit.status == UnitStatus.QUALITY_HOLD:
+            return "La unidad esta retenida por calidad y no puede continuar la ruta."
+        if unit.status == UnitStatus.REWORK:
+            return "La unidad esta en retrabajo y debe reingresar antes de continuar la ruta."
+        if unit.status == UnitStatus.RELEASED:
+            return "La unidad ya fue liberada y no admite ejecucion de estacion."
+    return ""
+
+
 def _active_operator(username, fallback):
     if not username:
         return fallback
@@ -119,6 +139,9 @@ def record_station_event(
         route, step = route_step_for(unit, station)
         if route is None or step is None:
             raise ValueError("La unidad no tiene un paso activo para la estacion indicada.")
+        route_issue = station_event_issue_for(unit, route, step, event_type)
+        if route_issue:
+            raise ValueError(route_issue)
         if event_type not in available_station_actions(latest_station_event(unit, station)):
             raise ValueError("El evento no corresponde al estado actual de la unidad en la estacion.")
         station_event = UnitStationEvent.objects.create(
@@ -411,6 +434,9 @@ def process_equipment_event(*, actor, external_id, equipment_code, station_code,
             route, step = route_step_for(unit, station)
             if route is None or step is None:
                 raise ValueError("La unidad no tiene un paso activo para la estacion resuelta.")
+            route_issue = station_event_issue_for(unit, route, step, event_type)
+            if route_issue:
+                raise ValueError(route_issue)
             if event_type not in available_station_actions(latest_station_event(unit, station)):
                 raise ValueError("El evento no corresponde al estado actual de la unidad en la estacion.")
 

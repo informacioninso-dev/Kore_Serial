@@ -65,6 +65,7 @@ from .models import (
     UnitStationEvent,
     UnitStatus,
 )
+from .services import record_station_event
 
 
 class SerializedUnitTests(TenantTestCase):
@@ -910,6 +911,96 @@ class SerializedUnitTests(TenantTestCase):
         unit.refresh_from_db()
         self.assertEqual(unit.status, UnitStatus.REGISTERED)
         self.assertFalse(UnitStationEvent.objects.filter(unit=unit, station=station).exists())
+
+    def test_station_events_must_follow_the_route_sequence(self):
+        unit = self.create_unit("SER-ROUTE-ORDER")
+        first_station, route, first_step = self.create_station_route_step()
+        second_station = AssemblyStation.objects.create(
+            line=first_station.line,
+            code="ST-02",
+            name="Montaje final",
+            sequence=2,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        AssemblyRouteStep.objects.create(
+            route=route,
+            station=second_station,
+            sequence=2,
+            name="Cierre final",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+
+        with self.assertRaisesMessage(ValueError, "El paso actual de la unidad es #1"):
+            record_station_event(
+                actor=self.user,
+                unit_serial_number=unit.serial_number,
+                station_code=second_station.code,
+                event_type=StationEventType.STARTED,
+            )
+
+        started, created = record_station_event(
+            actor=self.user,
+            unit_serial_number=unit.serial_number,
+            station_code=first_station.code,
+            event_type=StationEventType.STARTED,
+        )
+        self.assertTrue(created)
+        self.assertEqual(started.route_step, first_step)
+
+    def test_station_console_blocks_route_continuation_during_quality_hold(self):
+        self.grant_permissions("add_unitstationevent")
+        unit = self.create_unit("SER-QUALITY-HOLD")
+        first_station, route, _first_step = self.create_station_route_step()
+        second_station = AssemblyStation.objects.create(
+            line=first_station.line,
+            code="ST-02",
+            name="Montaje final",
+            sequence=2,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        AssemblyRouteStep.objects.create(
+            route=route,
+            station=second_station,
+            sequence=2,
+            name="Cierre final",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+
+        self.client.post(
+            "/produccion/estacion/",
+            {
+                "station": first_station.pk,
+                "serial_number": unit.serial_number,
+                "action": StationEventType.STARTED,
+            },
+        )
+        self.client.post(
+            "/produccion/estacion/",
+            {
+                "station": first_station.pk,
+                "serial_number": unit.serial_number,
+                "action": StationEventType.COMPLETED,
+            },
+        )
+
+        response = self.client.post(
+            "/produccion/estacion/",
+            {
+                "station": second_station.pk,
+                "serial_number": unit.serial_number,
+                "action": StationEventType.STARTED,
+            },
+            follow=True,
+        )
+
+        unit.refresh_from_db()
+        self.assertEqual(unit.status, UnitStatus.QUALITY_HOLD)
+        self.assertFalse(UnitStationEvent.objects.filter(unit=unit, station=second_station).exists())
+        self.assertContains(response, "La unidad esta retenida por calidad")
 
     def test_equipment_api_processes_a_station_event_with_jwt(self):
         self.grant_permissions("add_equipmentinboundevent")

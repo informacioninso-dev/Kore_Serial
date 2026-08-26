@@ -305,7 +305,7 @@ Criterios de salida:
 
 ## Fase 13 - Cierre funcional MES
 
-Estado: implementacion inicial.
+Estado: cerrada para el alcance MES inicial.
 
 Objetivo: completar la columna vertebral del MES antes de pasar a WMS, Edge o
 Connect.
