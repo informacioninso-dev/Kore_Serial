@@ -1,7 +1,7 @@
 /* ============================================================
-   Kore Serial - Brand Theme
+   Kore Line - Brand Theme
 
-   Single source of truth for the Kore Serial interface palette.
+   Single source of truth for the Kore Line interface palette.
    Do not create product color overrides in templates or extra theme files.
 
    Brand palette:
@@ -35,7 +35,7 @@
 
 /* Tailwind v4 token overrides.
    Existing inherited templates keep using bg-blue-* / text-blue-* classes;
-   in Kore Serial, those classes render as Industrial Orange. */
+   in Kore Line, those classes render as Industrial Orange. */
 @layer theme {
   :root {
     --color-blue-50: #fff4e5;

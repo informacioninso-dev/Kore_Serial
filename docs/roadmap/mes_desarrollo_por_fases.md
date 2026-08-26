@@ -1,6 +1,6 @@
-# Roadmap MES Kore Serial
+# Roadmap MES Kore Line
 
-Kore Serial tiene como objetivo convertirse en un MES serializado para
+Kore Line tiene como objetivo convertirse en un MES serializado para
 ensamblaje en planta. El sistema no se orienta a lotes de produccion; la unidad
 fisica serializada es el eje de control, trazabilidad y liberacion.
 

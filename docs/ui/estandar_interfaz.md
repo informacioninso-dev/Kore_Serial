@@ -1,4 +1,4 @@
-# Estandar de Interfaz Kore Serial (fuente unica de verdad)
+# Estandar de Interfaz Kore Line (fuente unica de verdad)
 
 > **Lee este archivo ANTES de crear o modificar cualquier pantalla.**
 > Todo modulo debe verse como una sola aplicacion. Si una pantalla no se parece

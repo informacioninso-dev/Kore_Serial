@@ -1,10 +1,10 @@
-# Tema de marca Kore Serial
+# Tema de marca Kore Line
 
-Este documento fija la separacion visual de Kore Serial frente a la vertical Kore ERP heredada.
+Este documento fija la separacion visual de Kore Line frente a la vertical Kore ERP heredada.
 
 ## Principio
 
-Kore Serial es la vertical de ensamblaje del ecosistema Kore. Mantiene la estructura de producto y experiencia heredada, pero su acento visual es industrial y operativo.
+Kore Line es la vertical de ensamblaje del ecosistema Kore. Mantiene la estructura de producto y experiencia heredada, pero su acento visual es industrial y operativo.
 
 No tocar `static/img/logo.png` en esta etapa. El check interior del logo se recoloreara despues, cuando se trabaje el activo de marca.
 
@@ -12,7 +12,7 @@ No tocar `static/img/logo.png` en esta etapa. El check interior del logo se reco
 
 - La base hexagonal del logo permanece constante.
 - El check interior debe pasar a Naranja Industrial `#FF8C00` cuando se edite el logo.
-- El texto principal se expresa como `KORE Serial`.
+- El texto principal se expresa como `KORE Line`.
 - `KORE` mantiene peso fuerte para continuidad de ecosistema.
 - `Serial` se muestra a la derecha, con peso mas ligero y acento naranja.
 
@@ -35,7 +35,7 @@ La fuente unica de marca es `static/css/kore-theme.css`.
 
 Las plantillas base cargan los assets comunes mediante `templates/partials/_head_assets.html`. Si se crea una nueva plantilla base, debe incluir ese partial en vez de declarar CSS propio.
 
-Por compatibilidad con el software heredado, las plantillas pueden seguir usando clases Tailwind existentes como `bg-blue-600`, `text-blue-700`, `border-blue-300` y `focus:ring-blue-500`. En Kore Serial, esas clases estan remapeadas visualmente a la paleta naranja desde `kore-theme.css`.
+Por compatibilidad con el software heredado, las plantillas pueden seguir usando clases Tailwind existentes como `bg-blue-600`, `text-blue-700`, `border-blue-300` y `focus:ring-blue-500`. En Kore Line, esas clases estan remapeadas visualmente a la paleta naranja desde `kore-theme.css`.
 
 No reintroducir estos colores como marca en nuevas pantallas:
 

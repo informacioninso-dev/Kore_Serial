@@ -16,7 +16,7 @@ DEMO_PASSWORD = "KoreSerial2026!"
 
 
 class Command(BaseCommand):
-    help = "Carga datos demo idempotentes para Kore Serial."
+    help = "Carga datos demo idempotentes para Kore Line."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -37,7 +37,7 @@ class Command(BaseCommand):
         with schema_context(tenant.schema_name):
             summary = self._populate_tenant(tenant, admin, operator, quality)
 
-        self.stdout.write(self.style.SUCCESS(f"Populate Kore Serial listo en schema {tenant.schema_name}."))
+        self.stdout.write(self.style.SUCCESS(f"Populate Kore Line listo en schema {tenant.schema_name}."))
         for label, count in summary.items():
             self.stdout.write(f"- {label}: {count}")
         self.stdout.write(f"- usuario demo: operador.linea / {DEMO_PASSWORD}")
@@ -67,7 +67,7 @@ class Command(BaseCommand):
             defaults={
                 "email": "admin@kore-serial.local",
                 "first_name": "Admin",
-                "last_name": "Kore Serial",
+                "last_name": "Kore Line",
                 "is_staff": True,
                 "is_superuser": True,
             },
@@ -231,14 +231,14 @@ class Command(BaseCommand):
             config = CompanyConfig.objects.create(
                 ruc="0999999999001",
                 legal_name=tenant.name,
-                trade_name="Kore Serial Demo",
+                trade_name="Kore Line Demo",
                 address="Planta de ensamblaje demo",
                 created_by=admin,
                 updated_by=admin,
             )
         else:
             config.legal_name = config.legal_name or tenant.name
-            config.trade_name = config.trade_name or "Kore Serial Demo"
+            config.trade_name = config.trade_name or "Kore Line Demo"
             config.address = config.address or "Planta de ensamblaje demo"
             config.updated_by = admin
             config.save()
@@ -437,7 +437,7 @@ class Command(BaseCommand):
             code="PLANTA-CIAUTO",
             defaults={
                 "name": "Planta demo de ensamblaje",
-                "description": "Planta base para validar el flujo MES de Kore Serial.",
+                "description": "Planta base para validar el flujo MES de Kore Line.",
                 "address": "Zona industrial demo",
                 "is_active": True,
                 "updated_by": admin,

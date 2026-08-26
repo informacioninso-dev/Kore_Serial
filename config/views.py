@@ -507,7 +507,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                 {
                     "can_view_production": False,
                     "is_tenant_admin": is_tenant_admin,
-                    "tenant_name": getattr(getattr(self.request, "tenant", None), "name", "Kore Serial"),
+                    "tenant_name": getattr(getattr(self.request, "tenant", None), "name", "Kore Line"),
                     "module_cards": self._admin_module_cards(is_tenant_admin),
                 }
             )
@@ -628,7 +628,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                 "can_view_production": True,
                 "can_view_metrics": can_view_metrics,
                 "is_tenant_admin": is_tenant_admin,
-                "tenant_name": getattr(getattr(self.request, "tenant", None), "name", "Kore Serial"),
+                "tenant_name": getattr(getattr(self.request, "tenant", None), "name", "Kore Line"),
                 "today_label": today.strftime("%d/%m/%Y"),
                 "kpi_cards": [
                     {
@@ -766,3 +766,25 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
 class PublicDashboardView(TemplateView):
     template_name = "public_dashboard.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # The public URLconf intentionally excludes tenant-only namespaces.
+        context.update(
+            {
+                "modules": {
+                    "partners": False,
+                    "procurement": False,
+                    "production": False,
+                    "quality": False,
+                    "sales": False,
+                    "inventory": False,
+                    "finance": False,
+                    "billing": False,
+                    "core": False,
+                    "migration_hub": False,
+                },
+                "is_tenant_admin": False,
+            }
+        )
+        return context

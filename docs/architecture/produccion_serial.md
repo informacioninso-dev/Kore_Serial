@@ -1,8 +1,8 @@
 # Produccion Serial
 
-Kore Serial usa **Produccion** como nombre visible del modulo, pero la app
+Kore Line usa **Produccion** como nombre visible del modulo, pero la app
 Django principal sigue siendo `assembly`. La razon es tecnica y funcional:
-Kore ERP ya usa produccion con una logica por lotes, mientras que Kore Serial
+Kore ERP ya usa produccion con una logica por lotes, mientras que Kore Line
 controla unidades fisicas individuales.
 
 ## Principio central
@@ -208,7 +208,7 @@ estaciones. Esto cubre scanners, torquimetros, impresoras, PLC, bancos de prueba
 y otros equipos disponibles para mediciones o captura de eventos.
 
 Django no abre conexiones directas contra esos equipos. Un recolector externo
-debe publicar eventos a la API de Kore Serial.
+debe publicar eventos a la API de Kore Line.
 
 ## Calidad y liberacion
 

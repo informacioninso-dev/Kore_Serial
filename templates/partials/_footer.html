@@ -10,11 +10,11 @@
         <a href="{% url 'core:system_info' %}"
            class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-mono text-[11px] text-gray-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
            title="Informaci&oacute;n de la versi&oacute;n instalada">
-          Kore Serial {{ kore_system.display_version }} &middot; {{ kore_system.release_id }}
+          Kore Line {{ kore_system.display_version }} &middot; {{ kore_system.release_id }}
         </a>
       {% else %}
         <span class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-mono text-[11px] text-gray-500">
-          Kore Serial {{ kore_system.display_version }} &middot; {{ kore_system.release_id }}
+          Kore Line {{ kore_system.display_version }} &middot; {{ kore_system.release_id }}
         </span>
       {% endif %}
       <nav class="flex flex-wrap items-center gap-4" aria-label="Enlaces legales">

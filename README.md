@@ -1,12 +1,12 @@
-# Kore Serial
+# Kore Line
 
-Kore Serial es una plataforma industrial para ensamblaje serializado. Su primer
+Kore Line es una plataforma industrial para ensamblaje serializado. Su primer
 producto visible es un **MES** para controlar piso de planta, pero la vision
 completa es mas amplia: MES, WMS, Edge, Connect, trazabilidad, eventos,
 indicadores e integracion con sistemas externos.
 
 Comparte base tecnica con Kore ERP, pero no es una extension, un modulo ni un
-tenant de Kore. Kore Serial debe poder operar como producto propio para plantas
+tenant de Kore. Kore Line debe poder operar como producto propio para plantas
 de ensamblaje discreto.
 
 Su primer caso de uso es el ensamblaje CKD de vehiculos. El modelo de dominio
@@ -30,9 +30,9 @@ componentes, mediciones, defectos, retrabajos y liberacion propia.
 
 ## Vision de plataforma
 
-Kore Serial debe cubrir cuatro piezas principales.
+Kore Line debe cubrir cuatro piezas principales.
 
-### 1. Kore Serial MES
+### 1. Kore Line MES
 
 El MES es el cerebro de ejecucion de produccion. Orquesta la planta desde la
 orden hasta la liberacion final.
@@ -99,7 +99,7 @@ Kore no controla directamente motores, robots ni sistemas de seguridad.
 
 ### 4. Kore Connect
 
-Kore Connect integra Kore Serial con el mundo IT.
+Kore Connect integra Kore Line con el mundo IT.
 
 Debe poder conectar:
 
@@ -114,21 +114,21 @@ Debe poder conectar:
 - B22 cuando aplique por necesidad fiscal o documental.
 - APIs de terceros.
 
-Kore Serial no debe depender operativamente de Kore ERP. La integracion externa
+Kore Line no debe depender operativamente de Kore ERP. La integracion externa
 prevista por ahora es B22 cuando exista necesidad del negocio.
 
 ## Integracion MES + WMS
 
 Esta es una de las partes mas valiosas de la plataforma.
 
-Kore Serial conoce la secuencia productiva y sabe que una unidad llegara a una
+Kore Line conoce la secuencia productiva y sabe que una unidad llegara a una
 estacion en un tiempo aproximado. Con la version, BOM y ruta puede calcular que
 material necesita, para que unidad, para que estacion y para cuando.
 
 Flujo esperado:
 
 ```text
-Kore Serial
+Kore Line
 secuencia productiva
         |
         v
@@ -167,7 +167,7 @@ Resultado esperado:
 
 Cuando una pieza se instala correctamente, un solo evento debe poder:
 
-- Registrar genealogia en Kore Serial.
+- Registrar genealogia en Kore Line.
 - Descontar inventario fisico en Kore WMS.
 - Enviar consumo o movimiento al ERP/conector cuando aplique.
 - Alimentar indicadores y trazabilidad.
@@ -206,7 +206,7 @@ ERP
  |
  | orden de produccion
  v
-Kore Serial MES
+Kore Line MES
  | OP + serial/VIN + secuencia
  |
  +-----------------------+
@@ -330,7 +330,7 @@ Fases no implementadas dentro del roadmap MES inicial:
 
 El documento de arquitectura base para esta vision es
 [`docs/architecture/Draft.docx`](docs/architecture/Draft.docx). Ese draft debe
-convertirse en el documento maestro **Kore Serial v1.0**.
+convertirse en el documento maestro **Kore Line v1.0**.
 
 Siguientes fases recomendadas:
 
@@ -484,7 +484,7 @@ Usuarios administra:
 
 ## Tema de marca
 
-La guia de color de Kore Serial vive en
+La guia de color de Kore Line vive en
 [`docs/ui/tema_marca_kore_serial.md`](docs/ui/tema_marca_kore_serial.md).
 
 Resumen:
