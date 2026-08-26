@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}{{ kit.code }} | Kit de linea{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-3">
+  {% include "wms/_nav.html" with nav_key=nav_key %}
+  <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wide text-orange-700">Kit de linea</p>
+      <h1 class="mt-1 text-xl font-semibold text-gray-900">{{ kit.code }}</h1>
+      <p class="mt-1 text-sm text-gray-600">Destino: {{ kit.destination_location.warehouse.code }} / {{ kit.destination_location.code }}{% if kit.station %} · Estacion: {{ kit.station.code }}{% endif %}</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      {% if can_add_line %}<a href="{% url 'wms:kit_line_create' kit.pk %}" class="inline-flex h-9 items-center rounded-lg bg-orange-600 px-4 text-sm font-semibold text-white hover:bg-orange-700">Agregar linea</a>{% endif %}
+      {% if can_create_mission %}<a href="{% url 'wms:pick_mission_create' %}?kit={{ kit.pk }}" class="inline-flex h-9 items-center rounded-lg border px-4 text-sm text-gray-700 hover:bg-gray-50">Crear mision</a>{% endif %}
+      {% if can_release %}<form method="post" action="{% url 'wms:kit_action' kit.pk 'release' %}">{% csrf_token %}<button class="inline-flex h-9 items-center rounded-lg border px-4 text-sm text-gray-700 hover:bg-gray-50">Liberar kit</button></form>{% endif %}
+      {% if can_deliver %}<form method="post" action="{% url 'wms:kit_action' kit.pk 'deliver' %}">{% csrf_token %}<button class="inline-flex h-9 items-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700">Entregar a estacion</button></form>{% endif %}
+    </div>
+  </div>
+  <div class="mb-4 rounded-lg border bg-white p-4 text-sm"><span class="font-medium">Estado:</span> {{ kit.get_status_display }} · <span class="font-medium">Objetivo:</span> {% if kit.production_plan %}Plan {{ kit.production_plan.code }}{% else %}Unidad {{ kit.serialized_unit.serial_number }}{% endif %}</div>
+  <div class="overflow-x-auto rounded-lg border bg-white">
+    <table class="min-w-full text-sm"><thead class="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-600"><tr><th class="px-4 py-3">Material</th><th class="px-4 py-3">Requerida</th><th class="px-4 py-3">Recogida</th><th class="px-4 py-3">Pendiente</th></tr></thead><tbody class="divide-y divide-gray-100">
+      {% for line in kit.lines.all %}<tr><td class="px-4 py-3"><strong>{{ line.material.code }}</strong><span class="block text-xs text-gray-500">{{ line.material.name }}</span></td><td class="px-4 py-3">{{ line.required_quantity }} {{ line.material.base_unit.code }}</td><td class="px-4 py-3">{{ line.picked_quantity }} {{ line.material.base_unit.code }}</td><td class="px-4 py-3">{{ line.remaining_quantity }} {{ line.material.base_unit.code }}</td></tr>{% empty %}<tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">Agrega los materiales requeridos para este kit.</td></tr>{% endfor %}
+    </tbody></table>
+  </div>
+</div>
+{% endblock %}

@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .api import InventoryBalanceListAPIView, InventoryOperationAPIView, MaterialListAPIView, ReceiptReceiveAPIView
+from .api import InventoryBalanceListAPIView, InventoryOperationAPIView, MaterialListAPIView, PickMissionListAPIView, PickTaskCompleteAPIView, ReceiptReceiveAPIView
 
 
 urlpatterns = [
@@ -8,4 +8,6 @@ urlpatterns = [
     path("balances/", InventoryBalanceListAPIView.as_view(), name="balance_list"),
     path("receipts/receive/", ReceiptReceiveAPIView.as_view(), name="receipt_receive"),
     path("movements/", InventoryOperationAPIView.as_view(), name="movement_create"),
+    path("picking/missions/", PickMissionListAPIView.as_view(), name="pick_mission_list"),
+    path("picking/tasks/complete/", PickTaskCompleteAPIView.as_view(), name="pick_task_complete"),
 ]

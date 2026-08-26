@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}{{ mission.code }} | Picking{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-3">
+  {% include "wms/_nav.html" with nav_key=nav_key %}
+  <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+    <div><p class="text-xs font-semibold uppercase tracking-wide text-orange-700">Mision de picking</p><h1 class="mt-1 text-xl font-semibold text-gray-900">{{ mission.code }}</h1><p class="mt-1 text-sm text-gray-600">{{ mission.source_location.code }} → {{ mission.destination_location.code }}{% if mission.kit %} · Kit {{ mission.kit.code }}{% endif %}</p></div>
+    <div class="flex gap-2">
+      {% if can_add_task %}<a href="{% url 'wms:pick_task_create' mission.pk %}" class="inline-flex h-9 items-center rounded-lg bg-orange-600 px-4 text-sm font-semibold text-white hover:bg-orange-700">Agregar tarea</a>{% endif %}
+      {% if can_release %}<form method="post" action="{% url 'wms:pick_mission_action' mission.pk 'release' %}">{% csrf_token %}<button class="inline-flex h-9 items-center rounded-lg border px-4 text-sm text-gray-700 hover:bg-gray-50">Liberar mision</button></form>{% endif %}
+    </div>
+  </div>
+  <div class="mb-4 rounded-lg border bg-white p-4 text-sm"><span class="font-medium">Estado:</span> {{ mission.get_status_display }} · El picking traslada inventario disponible; no consume componentes.</div>
+  <div class="overflow-x-auto rounded-lg border bg-white"><table class="min-w-full text-sm"><thead class="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-600"><tr><th class="px-4 py-3">Material</th><th class="px-4 py-3">Trazabilidad</th><th class="px-4 py-3">Cantidad</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3 text-right">Accion</th></tr></thead><tbody class="divide-y divide-gray-100">
+    {% for task in mission.tasks.all %}<tr><td class="px-4 py-3"><strong>{{ task.material.code }}</strong><span class="block text-xs text-gray-500">{% if task.kit_line %}Kit: {{ task.kit_line.kit.code }}{% else %}Reposicion directa{% endif %}</span></td><td class="px-4 py-3">{% if task.serial %}Serie {{ task.serial.number }}{% elif task.lot %}Lote {{ task.lot.number }}{% else %}-{% endif %}</td><td class="px-4 py-3">{{ task.quantity }} {{ task.material.base_unit.code }}</td><td class="px-4 py-3">{{ task.get_status_display }}</td><td class="px-4 py-3 text-right">{% if can_pick and task.status == 'PENDING' %}<form method="post" action="{% url 'wms:pick_task_action' mission.pk task.pk 'pick' %}" class="inline">{% csrf_token %}<button class="rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-gray-50">Confirmar picking</button></form>{% else %}<span class="text-xs text-gray-400">-</span>{% endif %}</td></tr>{% empty %}<tr><td colspan="5" class="px-4 py-6 text-center text-gray-500">Agrega tareas con material, cantidad y trazabilidad.</td></tr>{% endfor %}
+  </tbody></table></div>
+</div>
+{% endblock %}

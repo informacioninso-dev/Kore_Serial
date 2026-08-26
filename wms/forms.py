@@ -3,6 +3,8 @@ from django import forms
 from core.models import Location
 
 from .models import (
+    AssemblyKit,
+    AssemblyKitLine,
     InboundReceipt,
     InboundReceiptLine,
     InventoryState,
@@ -11,6 +13,10 @@ from .models import (
     MaterialCategory,
     MaterialLot,
     MaterialSerial,
+    KanbanSignal,
+    PickMission,
+    PickTask,
+    ReplenishmentRule,
     WmsLocationProfile,
 )
 
@@ -157,3 +163,88 @@ class InventoryOperationForm(WMSFormMixin, forms.Form):
             if not cleaned.get("source_location") or not cleaned.get("source_state"):
                 self.add_error("source_location", "Indica origen y estado para el ajuste negativo.")
         return cleaned
+
+
+class AssemblyKitForm(WMSFormMixin, forms.ModelForm):
+    class Meta:
+        model = AssemblyKit
+        fields = ["code", "production_plan", "serialized_unit", "destination_location", "station", "notes"]
+        widgets = {"notes": forms.Textarea(attrs={"rows": 3})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["destination_location"].queryset = Location.objects.filter(
+            is_active=True,
+            wms_profile__is_active=True,
+            wms_profile__operational_type__in=[LocationOperationalType.SUPERMARKET, LocationOperationalType.LINE_SIDE],
+        ).select_related("warehouse").order_by("warehouse__code", "code")
+
+
+class AssemblyKitLineForm(WMSFormMixin, forms.ModelForm):
+    class Meta:
+        model = AssemblyKitLine
+        fields = ["material", "required_quantity", "notes"]
+        widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["material"].queryset = Material.objects.filter(is_active=True).order_by("code")
+
+
+class PickMissionForm(WMSFormMixin, forms.ModelForm):
+    class Meta:
+        model = PickMission
+        fields = ["code", "kit", "source_location", "destination_location", "notes"]
+        widgets = {"notes": forms.Textarea(attrs={"rows": 3})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        locations = Location.objects.filter(is_active=True).select_related("warehouse").order_by("warehouse__code", "code")
+        self.fields["source_location"].queryset = locations
+        self.fields["destination_location"].queryset = locations.filter(
+            wms_profile__is_active=True,
+            wms_profile__operational_type__in=[LocationOperationalType.SUPERMARKET, LocationOperationalType.LINE_SIDE],
+        )
+        self.fields["kit"].queryset = AssemblyKit.objects.filter(status="RELEASED").order_by("code")
+
+
+class PickTaskForm(WMSFormMixin, forms.ModelForm):
+    class Meta:
+        model = PickTask
+        fields = ["kit_line", "material", "quantity", "lot", "serial"]
+
+    def __init__(self, *args, mission=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.mission = mission
+        self.fields["material"].queryset = Material.objects.filter(is_active=True).order_by("code")
+        self.fields["lot"].queryset = MaterialLot.objects.select_related("material").order_by("material__code", "number")
+        self.fields["serial"].queryset = MaterialSerial.objects.select_related("material").order_by("material__code", "number")
+        if mission and mission.kit_id:
+            self.fields["kit_line"].queryset = mission.kit.lines.select_related("material").all()
+        else:
+            self.fields["kit_line"].queryset = AssemblyKitLine.objects.none()
+
+
+class ReplenishmentRuleForm(WMSFormMixin, forms.ModelForm):
+    class Meta:
+        model = ReplenishmentRule
+        fields = ["code", "material", "source_location", "destination_location", "minimum_quantity", "maximum_quantity", "is_active"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        locations = Location.objects.filter(is_active=True).select_related("warehouse").order_by("warehouse__code", "code")
+        self.fields["material"].queryset = Material.objects.filter(is_active=True).order_by("code")
+        self.fields["source_location"].queryset = locations
+        self.fields["destination_location"].queryset = locations.filter(
+            wms_profile__is_active=True,
+            wms_profile__operational_type__in=[LocationOperationalType.SUPERMARKET, LocationOperationalType.LINE_SIDE],
+        )
+
+
+class KanbanSignalCreateForm(WMSFormMixin, forms.Form):
+    rule = forms.ModelChoiceField(queryset=ReplenishmentRule.objects.none(), label="Regla de reposicion")
+    reason = forms.CharField(max_length=240, required=False, label="Motivo")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["rule"].queryset = ReplenishmentRule.objects.filter(is_active=True).select_related("material", "destination_location").order_by("code")

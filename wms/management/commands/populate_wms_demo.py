@@ -6,7 +6,17 @@ from django_tenants.utils import schema_context
 
 from core.models import Location, Unit, UnitCategory, Warehouse, WarehouseType
 from tenants.models import Client
-from wms.models import InboundReceipt, InboundReceiptLine, InventoryMovement, InventoryState, Material, MaterialCategory, MaterialTraceability
+from wms.models import (
+    InboundReceipt,
+    InboundReceiptLine,
+    InventoryMovement,
+    InventoryState,
+    LocationOperationalType,
+    Material,
+    MaterialCategory,
+    MaterialTraceability,
+    WmsLocationProfile,
+)
 from wms.services import change_inventory_state, receive_receipt_line, transfer_inventory
 
 
@@ -45,6 +55,19 @@ class Command(BaseCommand):
             warehouse=warehouse,
             code="ALM-01",
             defaults={"name": "Almacen CKD", "created_by": admin, "updated_by": admin},
+        )
+        line_side, _ = Location.objects.get_or_create(
+            warehouse=warehouse,
+            code="LIN-01",
+            defaults={"name": "Line side demo", "created_by": admin, "updated_by": admin},
+        )
+        WmsLocationProfile.objects.get_or_create(
+            location=line_side,
+            defaults={
+                "operational_type": LocationOperationalType.LINE_SIDE,
+                "created_by": admin,
+                "updated_by": admin,
+            },
         )
         category, _ = MaterialCategory.objects.get_or_create(
             code="CKD",

@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Sum
 from django.utils import timezone
 
 from core.audit import log_operational_event
@@ -13,9 +14,17 @@ from .models import (
     InventoryMovement,
     InventoryMovementType,
     InventoryState,
+    AssemblyKitStatus,
+    KanbanSignal,
+    KanbanSignalStatus,
     MaterialLot,
     MaterialSerial,
     MaterialTraceability,
+    PickMission,
+    PickMissionStatus,
+    PickTask,
+    PickTaskStatus,
+    ReplenishmentRule,
     WmsLocationProfile,
 )
 
@@ -309,3 +318,220 @@ def adjust_inventory(*, actor, material, quantity, location, state, direction, l
             reason=reason,
         )
     raise ValidationError("Direccion de ajuste invalida.")
+
+
+def _log_line_feeding_event(*, actor, obj, action, reason="", metadata=None):
+    log_operational_event(
+        module="WMS",
+        action=action,
+        actor=actor,
+        obj=obj,
+        document_type=obj._meta.verbose_name.title(),
+        document_code=str(obj),
+        reason=reason,
+        metadata=metadata or {},
+    )
+
+
+def _next_code(prefix, model):
+    lock_series("wms-line-feeding-code", prefix)
+    last_id = model.objects.order_by("-id").values_list("id", flat=True).first() or 0
+    return f"{prefix}-{last_id + 1:06d}"
+
+
+def release_kit(*, actor, kit):
+    if kit.status != AssemblyKitStatus.DRAFT:
+        raise ValidationError("Solo un kit en borrador puede liberarse.")
+    if not kit.lines.exists():
+        raise ValidationError("Agrega al menos una linea antes de liberar el kit.")
+    kit.status = AssemblyKitStatus.RELEASED
+    kit.updated_by = actor
+    kit.save(update_fields=["status", "updated_by", "updated_at"])
+    _log_line_feeding_event(actor=actor, obj=kit, action="RELEASE", reason="Kit liberado para picking")
+    return kit
+
+
+def create_pick_mission(*, actor, source_location, destination_location, kit=None, code="", notes=""):
+    if kit and kit.status not in {AssemblyKitStatus.RELEASED, AssemblyKitStatus.READY}:
+        raise ValidationError("La mision solo puede crearse para un kit liberado.")
+    with transaction.atomic():
+        mission = PickMission(
+            code=(code or _next_code("PICK", PickMission)).strip(),
+            kit=kit,
+            source_location=source_location,
+            destination_location=destination_location,
+            notes=notes,
+            created_by=actor,
+            updated_by=actor,
+        )
+        mission.full_clean()
+        mission.save()
+        _log_line_feeding_event(actor=actor, obj=mission, action="CREATE", reason="Mision de picking creada")
+        return mission
+
+
+def release_pick_mission(*, actor, mission):
+    if mission.status != PickMissionStatus.DRAFT:
+        raise ValidationError("Solo una mision en borrador puede liberarse.")
+    if not mission.tasks.exists():
+        raise ValidationError("Agrega al menos una tarea antes de liberar la mision.")
+    mission.status = PickMissionStatus.RELEASED
+    mission.updated_by = actor
+    mission.save(update_fields=["status", "updated_by", "updated_at"])
+    _log_line_feeding_event(actor=actor, obj=mission, action="RELEASE", reason="Mision liberada")
+    return mission
+
+
+def _sync_mission_status(*, actor, mission):
+    statuses = set(mission.tasks.values_list("status", flat=True))
+    if not statuses:
+        return mission
+    if statuses <= {PickTaskStatus.PICKED, PickTaskStatus.CANCELLED}:
+        new_status = PickMissionStatus.COMPLETED
+    elif PickTaskStatus.PICKED in statuses:
+        new_status = PickMissionStatus.IN_PROGRESS
+    else:
+        new_status = mission.status
+    if new_status != mission.status:
+        mission.status = new_status
+        mission.updated_by = actor
+        mission.save(update_fields=["status", "updated_by", "updated_at"])
+        _log_line_feeding_event(actor=actor, obj=mission, action="UPDATE", reason=f"Mision {mission.get_status_display().lower()}")
+    return mission
+
+
+def _sync_kit_status(*, actor, kit):
+    if kit.status not in {AssemblyKitStatus.RELEASED, AssemblyKitStatus.READY}:
+        return kit
+    lines = list(kit.lines.all())
+    if lines and all(line.remaining_quantity == 0 for line in lines):
+        if kit.status != AssemblyKitStatus.READY:
+            kit.status = AssemblyKitStatus.READY
+            kit.updated_by = actor
+            kit.save(update_fields=["status", "updated_by", "updated_at"])
+            _log_line_feeding_event(actor=actor, obj=kit, action="UPDATE", reason="Kit completo y listo para entrega")
+    return kit
+
+
+def complete_pick_task(*, actor, task, reason=""):
+    if task.status != PickTaskStatus.PENDING:
+        raise ValidationError("Solo una tarea pendiente puede recogerse.")
+    if task.mission.status not in {PickMissionStatus.RELEASED, PickMissionStatus.IN_PROGRESS}:
+        raise ValidationError("La mision debe estar liberada para confirmar el picking.")
+    if task.kit_line_id and task.quantity > task.kit_line.remaining_quantity:
+        raise ValidationError("La cantidad de la tarea supera el saldo requerido de la linea de kit.")
+    with transaction.atomic():
+        movement = transfer_inventory(
+            actor=actor,
+            material=task.material,
+            quantity=task.quantity,
+            source_location=task.mission.source_location,
+            destination_location=task.mission.destination_location,
+            state=InventoryState.AVAILABLE,
+            lot=task.lot,
+            serial=task.serial,
+            reason=reason or f"Picking {task.mission.code}",
+        )
+        task.status = PickTaskStatus.PICKED
+        task.picked_at = timezone.now()
+        task.updated_by = actor
+        task.full_clean()
+        task.save(update_fields=["status", "picked_at", "updated_by", "updated_at"])
+        _log_line_feeding_event(
+            actor=actor,
+            obj=task,
+            action="PICK",
+            reason=reason or "Material trasladado para abastecimiento de linea",
+            metadata={"movement_id": movement.pk, "mission": task.mission.code},
+        )
+        _sync_mission_status(actor=actor, mission=task.mission)
+        if task.kit_line_id:
+            _sync_kit_status(actor=actor, kit=task.kit_line.kit)
+        return movement
+
+
+def deliver_kit(*, actor, kit):
+    if kit.status != AssemblyKitStatus.READY:
+        raise ValidationError("El kit debe estar completo antes de entregarse a la estacion.")
+    kit.status = AssemblyKitStatus.DELIVERED
+    kit.updated_by = actor
+    kit.save(update_fields=["status", "updated_by", "updated_at"])
+    _log_line_feeding_event(actor=actor, obj=kit, action="DELIVER", reason="Kit entregado a linea")
+    return kit
+
+
+def available_quantity(*, material, location):
+    return InventoryBalance.objects.filter(
+        material=material,
+        location=location,
+        state=InventoryState.AVAILABLE,
+    ).aggregate(total=Sum("quantity"))["total"] or Decimal("0")
+
+
+def create_kanban_signal(*, actor, rule, reason=""):
+    if not rule.is_active:
+        raise ValidationError("La regla de reposicion esta inactiva.")
+    current_quantity = available_quantity(material=rule.material, location=rule.destination_location)
+    if current_quantity >= rule.minimum_quantity:
+        raise ValidationError("El saldo actual no esta por debajo del minimo de reposicion.")
+    requested_quantity = rule.maximum_quantity - current_quantity
+    with transaction.atomic():
+        signal = KanbanSignal(
+            code=_next_code("KAN", KanbanSignal),
+            rule=rule,
+            requested_quantity=requested_quantity,
+            reason=reason or f"Saldo {current_quantity} bajo minimo {rule.minimum_quantity}",
+            created_by=actor,
+            updated_by=actor,
+        )
+        signal.full_clean()
+        signal.save()
+        _log_line_feeding_event(
+            actor=actor,
+            obj=signal,
+            action="CREATE",
+            reason=signal.reason,
+            metadata={"available_quantity": str(current_quantity)},
+        )
+        return signal
+
+
+def create_kanban_pick_mission(*, actor, signal):
+    if signal.status != KanbanSignalStatus.OPEN:
+        raise ValidationError("Solo una senal Kanban pendiente puede convertirse en mision.")
+    rule = signal.rule
+    with transaction.atomic():
+        mission = create_pick_mission(
+            actor=actor,
+            source_location=rule.source_location,
+            destination_location=rule.destination_location,
+            notes=f"Reposicion Kanban {signal.code}",
+        )
+        if rule.material.traceability != MaterialTraceability.SERIAL:
+            task = PickTask(
+                mission=mission,
+                material=rule.material,
+                quantity=signal.requested_quantity,
+                created_by=actor,
+                updated_by=actor,
+            )
+            task.full_clean()
+            task.save()
+        signal.pick_mission = mission
+        signal.status = KanbanSignalStatus.IN_PROGRESS
+        signal.updated_by = actor
+        signal.save(update_fields=["pick_mission", "status", "updated_by", "updated_at"])
+        _log_line_feeding_event(actor=actor, obj=signal, action="UPDATE", reason="Mision Kanban creada", metadata={"mission": mission.code})
+        return mission
+
+
+def fulfill_kanban_signal(*, actor, signal):
+    if signal.status != KanbanSignalStatus.IN_PROGRESS or not signal.pick_mission_id:
+        raise ValidationError("La senal Kanban no tiene una mision en proceso.")
+    if signal.pick_mission.status != PickMissionStatus.COMPLETED:
+        raise ValidationError("Completa la mision de picking antes de atender la senal Kanban.")
+    signal.status = KanbanSignalStatus.FULFILLED
+    signal.updated_by = actor
+    signal.save(update_fields=["status", "updated_by", "updated_at"])
+    _log_line_feeding_event(actor=actor, obj=signal, action="FULFILL", reason="Reposicion Kanban atendida")
+    return signal

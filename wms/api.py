@@ -6,8 +6,8 @@ from rest_framework.exceptions import NotFound, PermissionDenied, ValidationErro
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import InboundReceiptLine, InventoryBalance, InventoryState, Material, MaterialLot, MaterialSerial
-from .services import adjust_inventory, change_inventory_state, receive_receipt_line, transfer_inventory
+from .models import InboundReceiptLine, InventoryBalance, InventoryState, Material, MaterialLot, MaterialSerial, PickMission, PickTask
+from .services import adjust_inventory, change_inventory_state, complete_pick_task, receive_receipt_line, transfer_inventory
 
 
 class WMSAPIView(APIView):
@@ -37,6 +37,11 @@ class InventoryOperationSerializer(serializers.Serializer):
     lot_number = serializers.CharField(max_length=120, required=False, allow_blank=True, default="")
     serial_number = serializers.CharField(max_length=120, required=False, allow_blank=True, default="")
     reason = serializers.CharField(max_length=240)
+
+
+class PickTaskCompleteSerializer(serializers.Serializer):
+    task_id = serializers.IntegerField(min_value=1)
+    reason = serializers.CharField(max_length=240, required=False, allow_blank=True, default="")
 
 
 class MaterialListAPIView(WMSAPIView):
@@ -143,3 +148,48 @@ class InventoryOperationAPIView(WMSAPIView):
         except (DjangoValidationError, AttributeError) as error:
             raise ValidationError({"detail": getattr(error, "messages", [str(error)])})
         return Response({"id": movement.pk, "movement_type": movement.movement_type, "quantity": str(movement.quantity)}, status=status.HTTP_201_CREATED)
+
+
+class PickMissionListAPIView(WMSAPIView):
+    required_permission = "wms.view_pickmission"
+
+    def get(self, request):
+        self.enforce_permission()
+        missions = PickMission.objects.select_related("source_location", "destination_location", "kit").prefetch_related("tasks").order_by("-created_at", "code")
+        status_filter = request.query_params.get("status", "").strip()
+        if status_filter:
+            missions = missions.filter(status=status_filter)
+        return Response(
+            [
+                {
+                    "id": mission.pk,
+                    "code": mission.code,
+                    "status": mission.status,
+                    "source_location_code": mission.source_location.code,
+                    "destination_location_code": mission.destination_location.code,
+                    "kit_code": mission.kit.code if mission.kit_id else "",
+                    "pending_task_count": sum(1 for task in mission.tasks.all() if task.status == "PENDING"),
+                }
+                for mission in missions
+            ]
+        )
+
+
+class PickTaskCompleteAPIView(WMSAPIView):
+    required_permission = "wms.add_inventorymovement"
+
+    def post(self, request):
+        self.enforce_permission()
+        serializer = PickTaskCompleteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        task = PickTask.objects.select_related("mission__source_location", "mission__destination_location", "material", "lot", "serial", "kit_line__kit").filter(pk=serializer.validated_data["task_id"]).first()
+        if task is None:
+            raise NotFound("Tarea de picking no encontrada.")
+        try:
+            movement = complete_pick_task(actor=request.user, task=task, reason=serializer.validated_data["reason"])
+        except DjangoValidationError as error:
+            raise ValidationError({"detail": error.messages})
+        return Response(
+            {"task_id": task.pk, "mission_code": task.mission.code, "movement_id": movement.pk, "quantity": str(movement.quantity)},
+            status=status.HTTP_201_CREATED,
+        )

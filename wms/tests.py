@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError
+from django.db.models import Sum
 from django.test import Client
 from django_tenants.test.cases import TenantTestCase
 from rest_framework.test import APIClient
@@ -10,6 +11,8 @@ from rest_framework_simplejwt.tokens import AccessToken
 
 from core.models import Location, OperationalAuditEvent, Unit, UnitCategory, Warehouse, WarehouseType
 from tenants.models import TenantMembership
+
+from assembly.models import AssembledProduct, ProductVersion, SerializedUnit
 
 from .models import (
     InboundReceipt,
@@ -20,9 +23,29 @@ from .models import (
     Material,
     MaterialSerial,
     MaterialTraceability,
+    AssemblyKit,
+    AssemblyKitLine,
+    AssemblyKitStatus,
+    KanbanSignalStatus,
+    LocationOperationalType,
+    PickMissionStatus,
+    PickTask,
+    ReplenishmentRule,
     WmsLocationProfile,
 )
-from .services import change_inventory_state, receive_receipt_line, transfer_inventory
+from .services import (
+    adjust_inventory,
+    change_inventory_state,
+    complete_pick_task,
+    create_kanban_pick_mission,
+    create_kanban_signal,
+    create_pick_mission,
+    fulfill_kanban_signal,
+    receive_receipt_line,
+    release_kit,
+    release_pick_mission,
+    transfer_inventory,
+)
 
 
 class WMSTests(TenantTestCase):
@@ -70,6 +93,19 @@ class WMSTests(TenantTestCase):
             created_by=self.user,
             updated_by=self.user,
         )
+        self.line_side_location = Location.objects.create(
+            warehouse=self.warehouse,
+            code="LIN-01",
+            name="Line side",
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        WmsLocationProfile.objects.create(
+            location=self.line_side_location,
+            operational_type=LocationOperationalType.LINE_SIDE,
+            created_by=self.user,
+            updated_by=self.user,
+        )
 
     def create_material(self, code="CKD-001", traceability=MaterialTraceability.LOT):
         return Material.objects.create(
@@ -97,6 +133,11 @@ class WMSTests(TenantTestCase):
             created_by=self.user,
             updated_by=self.user,
         )
+
+    def create_serialized_unit(self, serial_number="UNIT-001"):
+        product = AssembledProduct.objects.create(code="PRODUCT-001", name="Producto", created_by=self.user, updated_by=self.user)
+        version = ProductVersion.objects.create(product=product, code="V1", name="Version 1", created_by=self.user, updated_by=self.user)
+        return SerializedUnit.objects.create(version=version, serial_number=serial_number, created_by=self.user, updated_by=self.user)
 
     def test_receipt_by_lot_creates_quarantine_balance_and_audit_event(self):
         material = self.create_material()
@@ -234,3 +275,119 @@ class WMSTests(TenantTestCase):
         anonymous = Client(HTTP_HOST=self.get_test_tenant_domain())
         denied = anonymous.get("/bodega/inventario/")
         self.assertEqual(denied.status_code, 302)
+
+    def test_kit_picking_moves_material_to_line_without_consuming_it(self):
+        material = self.create_material(code="KIT-001", traceability=MaterialTraceability.NONE)
+        adjust_inventory(
+            actor=self.user,
+            material=material,
+            quantity=Decimal("2"),
+            location=self.storage_location,
+            state=InventoryState.AVAILABLE,
+            direction="IN",
+            reason="Saldo inicial de prueba",
+        )
+        kit = AssemblyKit.objects.create(
+            code="KIT-UNIT-001",
+            serialized_unit=self.create_serialized_unit(),
+            destination_location=self.line_side_location,
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        line = AssemblyKitLine.objects.create(
+            kit=kit,
+            material=material,
+            required_quantity=Decimal("2"),
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        release_kit(actor=self.user, kit=kit)
+        mission = create_pick_mission(
+            actor=self.user,
+            code="PICK-KIT-001",
+            kit=kit,
+            source_location=self.storage_location,
+            destination_location=self.line_side_location,
+        )
+        task = PickTask.objects.create(
+            mission=mission,
+            kit_line=line,
+            material=material,
+            quantity=Decimal("2"),
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        release_pick_mission(actor=self.user, mission=mission)
+        complete_pick_task(actor=self.user, task=task)
+
+        kit.refresh_from_db()
+        mission.refresh_from_db()
+        self.assertEqual(kit.status, AssemblyKitStatus.READY)
+        self.assertEqual(mission.status, PickMissionStatus.COMPLETED)
+        self.assertFalse(InventoryBalance.objects.filter(location=self.storage_location, material=material).exists())
+        balance = InventoryBalance.objects.get(location=self.line_side_location, material=material, state=InventoryState.AVAILABLE)
+        self.assertEqual(balance.quantity, Decimal("2"))
+        self.assertEqual(InventoryBalance.objects.filter(material=material).aggregate(total=Sum("quantity"))["total"], Decimal("2"))
+
+    def test_kanban_creates_replenishment_mission_and_keeps_inventory_traceable(self):
+        material = self.create_material(code="KAN-001", traceability=MaterialTraceability.NONE)
+        adjust_inventory(
+            actor=self.user,
+            material=material,
+            quantity=Decimal("10"),
+            location=self.storage_location,
+            state=InventoryState.AVAILABLE,
+            direction="IN",
+            reason="Saldo para Kanban",
+        )
+        rule = ReplenishmentRule.objects.create(
+            code="RULE-KAN-001",
+            material=material,
+            source_location=self.storage_location,
+            destination_location=self.line_side_location,
+            minimum_quantity=Decimal("3"),
+            maximum_quantity=Decimal("6"),
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        signal = create_kanban_signal(actor=self.user, rule=rule)
+        self.assertEqual(signal.requested_quantity, Decimal("6"))
+        mission = create_kanban_pick_mission(actor=self.user, signal=signal)
+        task = mission.tasks.get()
+        release_pick_mission(actor=self.user, mission=mission)
+        complete_pick_task(actor=self.user, task=task)
+        signal.refresh_from_db()
+        fulfill_kanban_signal(actor=self.user, signal=signal)
+        signal.refresh_from_db()
+
+        self.assertEqual(signal.status, KanbanSignalStatus.FULFILLED)
+        self.assertEqual(InventoryBalance.objects.get(location=self.line_side_location, material=material).quantity, Decimal("6"))
+        self.assertEqual(InventoryBalance.objects.get(location=self.storage_location, material=material).quantity, Decimal("4"))
+
+    def test_pick_task_api_confirms_available_transfer_with_jwt(self):
+        material = self.create_material(code="API-PICK-001", traceability=MaterialTraceability.NONE)
+        adjust_inventory(
+            actor=self.user,
+            material=material,
+            quantity=Decimal("1"),
+            location=self.storage_location,
+            state=InventoryState.AVAILABLE,
+            direction="IN",
+            reason="Saldo API",
+        )
+        mission = create_pick_mission(
+            actor=self.user,
+            code="PICK-API-001",
+            source_location=self.storage_location,
+            destination_location=self.line_side_location,
+        )
+        task = PickTask.objects.create(mission=mission, material=material, quantity=Decimal("1"), created_by=self.user, updated_by=self.user)
+        release_pick_mission(actor=self.user, mission=mission)
+        client = APIClient(HTTP_HOST=self.get_test_tenant_domain())
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(self.user)}")
+        response = client.post("/api/wms/v1/picking/tasks/complete/", {"task_id": task.pk}, format="json")
+
+        self.assertEqual(response.status_code, 201)
+        task.refresh_from_db()
+        self.assertEqual(task.status, "PICKED")
+        self.assertTrue(InventoryBalance.objects.filter(location=self.line_side_location, material=material, quantity=Decimal("1")).exists())

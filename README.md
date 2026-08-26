@@ -324,6 +324,7 @@ Fases implementadas:
 - **Fase 12 - MES avanzado:** implementacion inicial.
 - **Fase 13 - Cierre funcional MES:** cerrada para el alcance MES inicial.
 - **Fase 14 - WMS base:** cerrada para el alcance WMS inicial.
+- **Fase 15 - Picking, kitting y line feeding:** cerrada para el alcance inicial de abastecimiento a linea.
 
 Fases no implementadas dentro del roadmap MES inicial:
 
@@ -353,6 +354,8 @@ Estado: cerrada para el alcance WMS inicial.
 ### Fase 15 - Picking, kitting y line feeding
 
 Objetivo: conectar la secuencia productiva con abastecimiento a linea.
+
+Estado: cerrada para el alcance inicial de abastecimiento a linea.
 
 - Misiones de picking.
 - Kits por unidad, serial/VIN o plan.

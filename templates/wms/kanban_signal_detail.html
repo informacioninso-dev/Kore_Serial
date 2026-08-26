@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}{{ signal.code }} | Kanban{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-5xl px-4 py-3">
+  {% include "wms/_nav.html" with nav_key=nav_key %}
+  <div class="mb-4 flex flex-wrap items-start justify-between gap-3"><div><p class="text-xs font-semibold uppercase tracking-wide text-orange-700">Kanban digital</p><h1 class="mt-1 text-xl font-semibold text-gray-900">{{ signal.code }}</h1><p class="mt-1 text-sm text-gray-600">{{ signal.rule.material.code }} hacia {{ signal.rule.destination_location.code }}</p></div><div class="flex gap-2">{% if can_start %}<form method="post" action="{% url 'wms:kanban_signal_action' signal.pk 'start' %}">{% csrf_token %}<button class="inline-flex h-9 items-center rounded-lg bg-orange-600 px-4 text-sm font-semibold text-white hover:bg-orange-700">Crear mision</button></form>{% endif %}{% if can_fulfill %}<form method="post" action="{% url 'wms:kanban_signal_action' signal.pk 'fulfill' %}">{% csrf_token %}<button class="inline-flex h-9 items-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700">Marcar atendida</button></form>{% endif %}</div></div>
+  <div class="rounded-lg border bg-white p-5 text-sm"><dl class="grid gap-4 md:grid-cols-2"><div><dt class="text-xs font-medium text-gray-500">Estado</dt><dd class="mt-1 font-semibold">{{ signal.get_status_display }}</dd></div><div><dt class="text-xs font-medium text-gray-500">Cantidad solicitada</dt><dd class="mt-1 font-semibold">{{ signal.requested_quantity }} {{ signal.rule.material.base_unit.code }}</dd></div><div><dt class="text-xs font-medium text-gray-500">Regla min/max</dt><dd class="mt-1">{{ signal.rule.minimum_quantity }} / {{ signal.rule.maximum_quantity }}</dd></div><div><dt class="text-xs font-medium text-gray-500">Mision</dt><dd class="mt-1">{% if signal.pick_mission %}<a class="text-orange-700 hover:underline" href="{% url 'wms:pick_mission_detail' signal.pick_mission.pk %}">{{ signal.pick_mission.code }}</a>{% else %}-{% endif %}</dd></div><div class="md:col-span-2"><dt class="text-xs font-medium text-gray-500">Motivo</dt><dd class="mt-1">{{ signal.reason }}</dd></div></dl></div>
+</div>
+{% endblock %}
