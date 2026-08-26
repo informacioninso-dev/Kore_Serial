@@ -1,10 +1,2 @@
-<nav class="mb-4 overflow-x-auto rounded-lg border bg-white p-2">
-  <div class="flex min-w-max items-center gap-1">
-    <a href="{% url 'connect:dashboard' %}" class="rounded-lg px-3 py-2 text-sm font-medium {% if nav_key == 'dashboard' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Inicio</a>
-    {% if perms.connect.view_connector %}<a href="{% url 'connect:connector_list' %}" class="rounded-lg px-3 py-2 text-sm font-medium {% if nav_key == 'connectors' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Conectores</a>{% endif %}
-    {% if perms.connect.view_connectorcontract %}<a href="{% url 'connect:contract_list' %}" class="rounded-lg px-3 py-2 text-sm font-medium {% if nav_key == 'contracts' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Contratos</a>{% endif %}
-    {% if perms.connect.view_outboundmessage %}<a href="{% url 'connect:outbound_list' %}" class="rounded-lg px-3 py-2 text-sm font-medium {% if nav_key == 'outbound' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Salida</a>{% endif %}
-    {% if perms.connect.view_inboundmessage %}<a href="{% url 'connect:inbound_list' %}" class="rounded-lg px-3 py-2 text-sm font-medium {% if nav_key == 'inbound' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Entrada</a>{% endif %}
-    {% if perms.connect.view_reconciliationrun %}<a href="{% url 'connect:reconciliation_list' %}" class="rounded-lg px-3 py-2 text-sm font-medium {% if nav_key == 'reconciliation' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Reconciliacion</a>{% endif %}
-  </div>
-</nav>
+{% comment %}La barra la dibuja el componente comun; la estructura vive en core/navigation.py.{% endcomment %}
+{% include "partials/_module_nav.html" %}

@@ -2149,13 +2149,17 @@ class SerializedUnitTests(TenantTestCase):
         self.assertNotContains(production, ">Parametros<", html=False)
         self.assertNotContains(production, ">Requerimientos<", html=False)
 
+        # Versiones es configuracion aunque su codigo viva en la app assembly:
+        # muestra la barra de Configuracion, no la de Planta.
         versions = self.client.get("/produccion/versiones/")
 
         self.assertEqual(versions.status_code, 200)
         self.assertContains(versions, ">Versiones<", html=False)
         self.assertContains(versions, ">Plantas<", html=False)
         self.assertContains(versions, ">Areas<", html=False)
-        self.assertContains(versions, ">Parametros<", html=False)
-        self.assertContains(versions, ">Requerimientos<", html=False)
-        self.assertNotContains(versions, ">Empresa<", html=False)
-        self.assertNotContains(versions, ">Sistema<", html=False)
+        self.assertContains(versions, ">Parametros productivos<", html=False)
+        self.assertContains(versions, ">Componentes requeridos<", html=False)
+
+        # Y no muestra los grupos operativos de Planta.
+        for grupo in ("Ejecucion", "Trazabilidad"):
+            self.assertNotContains(versions, grupo, html=False)

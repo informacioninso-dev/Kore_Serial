@@ -1,3 +1,6 @@
+from core.navigation import build_module_nav, is_configuration_path
+
+
 def module_access(request):
     """Expose only installed product modules to the copied shared shell."""
     user = getattr(request, "user", None)
@@ -40,47 +43,15 @@ def module_access(request):
     resolver_match = getattr(request, "resolver_match", None)
     namespace = getattr(resolver_match, "namespace", "") if resolver_match else ""
     url_name = getattr(resolver_match, "url_name", "") if resolver_match else ""
-    configuration_url_names = {
-        "product_list",
-        "product_create",
-        "product_update",
-        "version_list",
-        "version_create",
-        "version_update",
-        "plant_list",
-        "plant_create",
-        "plant_update",
-        "area_list",
-        "area_create",
-        "area_update",
-        "line_list",
-        "line_create",
-        "line_update",
-        "station_list",
-        "station_create",
-        "station_update",
-        "route_list",
-        "route_create",
-        "route_update",
-        "step_list",
-        "step_create",
-        "step_update",
-        "parameter_list",
-        "parameter_create",
-        "parameter_update",
-        "requirement_list",
-        "requirement_create",
-        "requirement_update",
-        "equipment_list",
-        "equipment_create",
-        "equipment_update",
-    }
-    is_configuration_area = namespace == "core" or url_name in configuration_url_names
+    # Una sola fuente de verdad: la misma definicion que dibuja la barra.
+    is_configuration_area = is_configuration_path(request)
+    # Una pantalla de configuracion resalta Configuracion en la barra lateral,
+    # no el modulo donde vive su codigo: si no, se resaltarian los dos.
     is_production_area = namespace == "assembly" and not is_configuration_area
-    is_warehouse_area = namespace == "wms"
-    is_edge_area = namespace == "edge"
-    is_events_area = namespace == "eventbus"
-    is_connect_area = namespace == "connect"
+    is_warehouse_area = namespace == "wms" and not is_configuration_area
+    is_edge_area = namespace == "edge" and not is_configuration_area
+    is_events_area = namespace == "eventbus" and not is_configuration_area
+    is_connect_area = namespace == "connect" and not is_configuration_area
 
     # The copied shell contains links for modules intentionally absent here.
     # Keep their administrative links hidden until their own UI is introduced.
@@ -102,4 +73,7 @@ def module_access(request):
         "is_edge_area": is_edge_area,
         "is_events_area": is_events_area,
         "is_connect_area": is_connect_area,
+        # La barra del modulo se arma sola segun donde este el usuario: ninguna
+        # vista tiene que acordarse de pasarla.
+        "module_nav": build_module_nav(request),
     }

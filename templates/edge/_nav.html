@@ -1,11 +1,2 @@
-<nav class="mb-4 overflow-x-auto rounded-lg border bg-white p-2">
-  <div class="flex min-w-max items-center gap-1">
-    <a href="{% url 'edge:dashboard' %}" class="rounded-lg px-3 py-2 text-sm font-medium {% if nav_key == 'dashboard' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Inicio</a>
-    {% if perms.edge.view_edgegateway %}<a href="{% url 'edge:gateway_list' %}" class="rounded-lg px-3 py-2 text-sm font-medium {% if nav_key == 'gateways' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Gateways</a>{% endif %}
-    {% if perms.edge.view_edgedevice %}<a href="{% url 'edge:device_list' %}" class="rounded-lg px-3 py-2 text-sm font-medium {% if nav_key == 'devices' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Dispositivos</a>{% endif %}
-    {% if perms.edge.view_edgesignalrule %}<a href="{% url 'edge:rule_list' %}" class="rounded-lg px-3 py-2 text-sm font-medium {% if nav_key == 'rules' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Reglas</a>{% endif %}
-    {% if perms.edge.view_edgesignal %}<a href="{% url 'edge:signal_list' %}" class="rounded-lg px-3 py-2 text-sm font-medium {% if nav_key == 'signals' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Senales</a>{% endif %}
-    {% if perms.edge.view_edgehealthcheck %}<a href="{% url 'edge:health_list' %}" class="rounded-lg px-3 py-2 text-sm font-medium {% if nav_key == 'health' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Salud</a>{% endif %}
-    {% if perms.edge.view_edgecommand %}<a href="{% url 'edge:command_list' %}" class="rounded-lg px-3 py-2 text-sm font-medium {% if nav_key == 'commands' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Comandos</a>{% endif %}
-  </div>
-</nav>
+{% comment %}La barra la dibuja el componente comun; la estructura vive en core/navigation.py.{% endcomment %}
+{% include "partials/_module_nav.html" %}
