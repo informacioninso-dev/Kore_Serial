@@ -299,6 +299,8 @@ El estado actual entrega la primera base operativa del MES serializado:
 - Base DRF y SimpleJWT preparada para terminales y recolectores externos.
 - Redis para cache y Huey como cola ligera.
 - `psycopg` 3, WeasyPrint como motor PDF y configuracion base de HTMX.
+- Kore WMS base: materiales, perfiles de ubicacion, recepciones CKD,
+  inventario por ubicacion/estado/lote/serie y movimientos inmutables.
 
 ## Estado de fases MES
 
@@ -321,6 +323,7 @@ Fases implementadas:
 - **Fase 11 - Balanceo de linea:** implementacion inicial.
 - **Fase 12 - MES avanzado:** implementacion inicial.
 - **Fase 13 - Cierre funcional MES:** cerrada para el alcance MES inicial.
+- **Fase 14 - WMS base:** cerrada para el alcance WMS inicial.
 
 Fases no implementadas dentro del roadmap MES inicial:
 
@@ -337,6 +340,8 @@ Siguientes fases recomendadas:
 ### Fase 14 - WMS base
 
 Objetivo: controlar materiales y ubicaciones operativas.
+
+Estado: cerrada para el alcance WMS inicial.
 
 - Maestro de materiales.
 - Estructura fisica de almacen.

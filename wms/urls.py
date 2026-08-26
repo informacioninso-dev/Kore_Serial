@@ -1,0 +1,26 @@
+from django.urls import path
+
+from . import views
+
+
+urlpatterns = [
+    path("", views.WMSDashboardView.as_view(), name="dashboard"),
+    path("materiales/", views.MaterialListView.as_view(), name="material_list"),
+    path("materiales/nuevo/", views.MaterialCreateView.as_view(), name="material_create"),
+    path("materiales/<int:pk>/editar/", views.MaterialUpdateView.as_view(), name="material_update"),
+    path("categorias/", views.MaterialCategoryListView.as_view(), name="category_list"),
+    path("categorias/nueva/", views.MaterialCategoryCreateView.as_view(), name="category_create"),
+    path("categorias/<int:pk>/editar/", views.MaterialCategoryUpdateView.as_view(), name="category_update"),
+    path("ubicaciones/", views.LocationProfileListView.as_view(), name="location_profile_list"),
+    path("ubicaciones/nueva/", views.LocationProfileCreateView.as_view(), name="location_profile_create"),
+    path("ubicaciones/<int:pk>/editar/", views.LocationProfileUpdateView.as_view(), name="location_profile_update"),
+    path("recepciones/", views.InboundReceiptListView.as_view(), name="receipt_list"),
+    path("recepciones/nueva/", views.InboundReceiptCreateView.as_view(), name="receipt_create"),
+    path("recepciones/<int:pk>/", views.InboundReceiptDetailView.as_view(), name="receipt_detail"),
+    path("recepciones/<int:pk>/editar/", views.InboundReceiptUpdateView.as_view(), name="receipt_update"),
+    path("recepciones/<int:receipt_pk>/lineas/nueva/", views.InboundReceiptLineCreateView.as_view(), name="receipt_line_create"),
+    path("recepciones/lineas/<int:pk>/recibir/", views.ReceiveReceiptLineView.as_view(), name="receipt_line_receive"),
+    path("inventario/", views.InventoryBalanceListView.as_view(), name="balance_list"),
+    path("movimientos/", views.InventoryMovementListView.as_view(), name="movement_list"),
+    path("movimientos/nuevo/", views.InventoryOperationCreateView.as_view(), name="movement_create"),
+]

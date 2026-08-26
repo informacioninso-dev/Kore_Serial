@@ -1,0 +1,10 @@
+<nav class="mb-4 overflow-x-auto rounded-lg border bg-white p-2">
+  <div class="flex min-w-max items-center gap-1">
+    <a href="{% url 'wms:dashboard' %}" class="rounded-lg px-3 py-2 text-sm font-medium {% if nav_key == 'dashboard' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Inicio WMS</a>
+    {% if perms.wms.view_material %}<a href="{% url 'wms:material_list' %}" class="rounded-lg px-3 py-2 text-sm font-medium {% if nav_key == 'materials' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Materiales</a>{% endif %}
+    {% if perms.wms.view_inboundreceipt %}<a href="{% url 'wms:receipt_list' %}" class="rounded-lg px-3 py-2 text-sm font-medium {% if nav_key == 'receipts' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Recepciones CKD</a>{% endif %}
+    {% if perms.wms.view_inventorybalance %}<a href="{% url 'wms:balance_list' %}" class="rounded-lg px-3 py-2 text-sm font-medium {% if nav_key == 'inventory' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Inventario</a>{% endif %}
+    {% if perms.wms.view_inventorymovement %}<a href="{% url 'wms:movement_list' %}" class="rounded-lg px-3 py-2 text-sm font-medium {% if nav_key == 'movements' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Movimientos</a>{% endif %}
+    {% if perms.wms.view_wmslocationprofile %}<a href="{% url 'wms:location_profile_list' %}" class="rounded-lg px-3 py-2 text-sm font-medium {% if nav_key == 'locations' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">Ubicaciones</a>{% endif %}
+  </div>
+</nav>

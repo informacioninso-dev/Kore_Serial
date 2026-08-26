@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Kore WMS | Kore Line{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-3">
+  {% include "wms/_nav.html" with nav_key="dashboard" %}
+  <div class="mb-5">
+    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">Kore WMS</p>
+    <h1 class="mt-1 text-2xl font-semibold text-gray-900">Control fisico de materiales</h1>
+    <p class="mt-1 text-sm text-gray-600">Recepciones CKD, inventario por ubicacion y movimientos trazables.</p>
+  </div>
+  <section class="grid gap-3 md:grid-cols-4">
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Materiales activos</p><p class="mt-2 text-2xl font-semibold">{{ material_count }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Recepciones</p><p class="mt-2 text-2xl font-semibold">{{ receipt_count }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">En cuarentena</p><p class="mt-2 text-2xl font-semibold text-amber-700">{{ quarantine_quantity }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Disponible</p><p class="mt-2 text-2xl font-semibold text-emerald-700">{{ available_quantity }}</p></div>
+  </section>
+  <section class="mt-5 rounded-lg border bg-white">
+    <div class="border-b px-4 py-3"><h2 class="text-sm font-semibold">Ultimos movimientos</h2></div>
+    <div class="divide-y">
+      {% for movement in recent_movements %}
+        <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"><span><strong>{{ movement.material.code }}</strong> · {{ movement.get_movement_type_display }}</span><span class="text-gray-500">{{ movement.quantity }} · {{ movement.moved_at|date:"d/m/Y H:i" }}</span></div>
+      {% empty %}<p class="px-4 py-6 text-sm text-gray-500">Aun no hay movimientos registrados.</p>{% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}
