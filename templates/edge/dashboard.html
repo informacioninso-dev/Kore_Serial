@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Conectividad | Kore Line{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-3">
+  {% include "edge/_nav.html" with nav_key="dashboard" %}
+  <div class="mb-5">
+    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">Conectividad</p>
+    <h1 class="mt-1 text-2xl font-semibold text-gray-900">Puente con los equipos de planta</h1>
+    <p class="mt-1 text-sm text-gray-600">Collectores, senales crudas, buffer offline y comandos hacia el piso.</p>
+  </div>
+
+  <section class="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Gateways</p><p class="mt-2 text-2xl font-semibold">{{ gateway_count }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">En linea</p><p class="mt-2 text-2xl font-semibold text-emerald-700">{{ online_count }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Degradados</p><p class="mt-2 text-2xl font-semibold text-amber-700">{{ degraded_count }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Fuera de linea</p><p class="mt-2 text-2xl font-semibold text-red-700">{{ offline_count }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">En buffer</p><p class="mt-2 text-2xl font-semibold {% if buffered_total %}text-amber-700{% endif %}">{{ buffered_total }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Comandos abiertos</p><p class="mt-2 text-2xl font-semibold text-orange-700">{{ open_commands }}</p></div>
+  </section>
+
+  <section class="mt-3 grid gap-3 md:grid-cols-4">
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Dispositivos activos</p><p class="mt-2 text-2xl font-semibold">{{ device_count }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Reglas activas</p><p class="mt-2 text-2xl font-semibold">{{ rule_count }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Senales de hoy</p><p class="mt-2 text-2xl font-semibold">{{ signals_today }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Sin resolver</p><p class="mt-2 text-2xl font-semibold {% if pending_signals or rejected_signals %}text-red-700{% endif %}">{{ pending_signals|add:rejected_signals }}</p></div>
+  </section>
+
+  <section class="mt-5 rounded-lg border bg-white">
+    <div class="border-b px-4 py-3"><h2 class="text-sm font-semibold">Estado de collectores</h2></div>
+    <div class="divide-y">
+      {% for gateway in gateways %}
+        <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+          <span>
+            <a href="{% url 'edge:gateway_detail' gateway.pk %}" class="font-semibold text-orange-700 hover:underline">{{ gateway.code }}</a>
+            · {{ gateway.name }}
+            <span class="text-gray-500">{{ gateway.plant.name|default:"Sin planta" }}</span>
+          </span>
+          <span class="flex items-center gap-3 text-gray-500">
+            <span>buffer {{ gateway.buffered_signal_count }}</span>
+            <span>{% if gateway.seconds_since_last_seen is None %}sin contacto{% else %}hace {{ gateway.seconds_since_last_seen }}s{% endif %}</span>
+            <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium
+              {% if gateway.health_status == 'ONLINE' %}border-emerald-200 bg-emerald-50 text-emerald-700
+              {% elif gateway.health_status == 'DEGRADED' %}border-amber-200 bg-amber-50 text-amber-700
+              {% elif gateway.health_status == 'OFFLINE' %}border-red-200 bg-red-50 text-red-700
+              {% else %}border-gray-200 bg-gray-50 text-gray-700{% endif %}">
+              {{ gateway.health_status_label }}
+            </span>
+          </span>
+        </div>
+      {% empty %}
+        <p class="px-4 py-6 text-sm text-gray-500">Aun no hay gateways registrados.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="mt-5 rounded-lg border bg-white">
+    <div class="border-b px-4 py-3"><h2 class="text-sm font-semibold">Ultimas senales</h2></div>
+    <div class="divide-y">
+      {% for signal in recent_signals %}
+        <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+          <span>
+            <a href="{% url 'edge:signal_detail' signal.pk %}" class="font-semibold text-orange-700 hover:underline">{{ signal.signal_key }}</a>
+            · {{ signal.device.code }}
+            {% if signal.from_buffer %}<span class="text-amber-700">(buffer)</span>{% endif %}
+          </span>
+          <span class="text-gray-500">{{ signal.raw_value|default:"-" }} · {{ signal.get_status_display }} · {{ signal.captured_at|date:"d/m/Y H:i:s" }}</span>
+        </div>
+      {% empty %}
+        <p class="px-4 py-6 text-sm text-gray-500">Aun no se reciben senales del piso.</p>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

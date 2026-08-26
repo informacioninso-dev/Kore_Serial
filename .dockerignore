@@ -1,0 +1,14 @@
+.git
+.github
+.venv
+.tmp
+runtime
+__pycache__
+*.py[cod]
+staticfiles
+media
+logs
+private
+.env
+*.sqlite3
+docs/**/*.docx

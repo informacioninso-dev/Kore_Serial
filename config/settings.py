@@ -32,6 +32,9 @@ TENANT_APPS = [
     "core",
     "assembly",
     "wms",
+    "edge",
+    "eventbus",
+    "connect",
 ]
 
 INSTALLED_APPS = SHARED_APPS + [app for app in TENANT_APPS if app not in SHARED_APPS]

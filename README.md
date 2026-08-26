@@ -2,8 +2,8 @@
 
 Kore Line es una plataforma industrial para ensamblaje serializado. Su primer
 producto visible es un **MES** para controlar piso de planta, pero la vision
-completa es mas amplia: MES, WMS, Edge, Connect, trazabilidad, eventos,
-indicadores e integracion con sistemas externos.
+completa es mas amplia: MES, WMS, Conectividad, Connect, trazabilidad,
+eventos, indicadores e integracion con sistemas externos.
 
 Comparte base tecnica con Kore ERP, pero no es una extension, un modulo ni un
 tenant de Kore. Kore Line debe poder operar como producto propio para plantas
@@ -53,12 +53,18 @@ Debe controlar:
 - KPIs de planta: plan vs real, productividad, WIP, takt, cycle time,
   defectos, retrabajos, FPY y base para OEE.
 
-### 2. Kore WMS
+### 2. Kore Line WMS
 
-Kore WMS es el cerebro logistico de la plataforma. No reemplaza el inventario
-financiero de un ERP; controla el movimiento fisico operativo de materiales
-para que la linea reciba lo correcto, en el lugar correcto y en el momento
-correcto.
+Kore Line WMS es el cerebro logistico de la plataforma. No reemplaza el
+inventario financiero de un ERP; controla el movimiento fisico operativo de
+materiales para que la linea reciba lo correcto, en el lugar correcto y en el
+momento correcto.
+
+No es un sistema aparte ni un despliegue independiente: es un modulo mas del
+mismo producto. Vive como app Django propia (`wms`) por separacion de
+responsabilidades, pero comparte proyecto, base de datos, tenant, sesion y
+shell de navegacion con el MES. La GUI lo presenta como el modulo "Almacen",
+al mismo nivel que "Planta".
 
 Debe cubrir:
 
@@ -72,9 +78,10 @@ Debe cubrir:
 - Picking, kitting, reposicion, line feeding, Kanban digital y stock min/max.
 - Preparacion de materiales por serial/VIN cuando aplique.
 
-### 3. Kore Edge
+### 3. Kore Line Conectividad
 
-Kore Edge es el puente entre software y planta. La logica industrial de bajo
+Kore Line Conectividad (antes "Kore Edge") es el puente entre software y
+planta. La logica industrial de bajo
 nivel no debe vivir dentro del MES Django.
 
 Debe encargarse de:
@@ -212,7 +219,7 @@ Kore Line MES
  +-----------------------+
  |                       |
  v                       v
-Kore WMS                 Kore Edge
+Kore WMS                 Conectividad
  | necesidades           | maquinas
  | picking/kitting       | PLC/sensores
  v                       v
@@ -326,10 +333,14 @@ Fases implementadas:
 - **Fase 14 - WMS base:** cerrada para el alcance WMS inicial.
 - **Fase 15 - Picking, kitting y line feeding:** cerrada para el alcance inicial de abastecimiento a linea.
 - **Fase 16 - Poka-yoke y consumo automatico:** cerrada para el alcance inicial de validacion y consumo por escaneo.
+- **Fase 17 - Conectividad:** cerrada para el alcance inicial del puente OT.
+- **Fase 18 - Eventos e indicadores:** cerrada para el alcance inicial del bus interno.
+- **Fase 19 - Integraciones:** cerrada para el alcance inicial de conectores.
+- **Fase 20 - Piloto automotriz CIAUTO:** cerrada, ejecutable de punta a punta.
 
-Fases no implementadas dentro del roadmap MES inicial:
+Fases no implementadas:
 
-- Ninguna. Lo pendiente ya pertenece al roadmap de plataforma.
+- Ninguna. El roadmap de la fase 0 a la 20 esta cerrado.
 
 ## Roadmap macro despues del cierre MES
 
@@ -378,39 +389,57 @@ Estado: cerrada para el alcance inicial de validacion y consumo por escaneo.
 - Descuento de inventario operativo.
 - Evento unico para MES, WMS, Connect y Analytics.
 
-### Fase 17 - Kore Edge
+### Fase 17 - Conectividad
 
 Objetivo: crear el puente OT para equipos de planta.
 
-- Collector independiente.
-- Integracion inicial con scanners, torquimetros o un PLC simulado.
-- Normalizacion de senales tecnicas a eventos de negocio.
-- Buffer offline.
-- Health checks de equipo.
-- Handshake robusto para integraciones bidireccionales selectivas.
+Estado: cerrada para el alcance inicial del puente OT.
 
-### Fase 18 - Event Bus y analitica industrial
+- Collector independiente: gateway con token propio, latido y version de agente.
+- Integracion inicial con scanners, torquimetros, PLC y sensores.
+- Normalizacion de senales tecnicas a eventos de negocio mediante reglas.
+- Buffer offline con reenvio deduplicado por identificador externo.
+- Health checks de gateway: cola, buffer, latencia y estado derivado.
+- Handshake bidireccional selectivo: el gateway recoge comandos y confirma.
+
+### Fase 18 - Eventos e indicadores
 
 Objetivo: desacoplar los modulos y alimentar indicadores confiables.
 
-- Catalogo formal de eventos.
-- Publicacion y consumo interno.
-- Idempotencia y auditoria.
-- Indicadores derivados de eventos.
-- Base para OEE, MTBF, MTTR, FPY y perdidas.
+Estado: cerrada para el alcance inicial del bus interno.
 
-### Fase 19 - Kore Connect
+- Catalogo formal de eventos en tabla: lo que no esta declarado no se publica.
+- Publicacion y consumo interno por suscripcion, con entrega por suscriptor.
+- Idempotencia por clave derivada del hecho origen; reintentos con tope.
+- Indicadores reconstruidos desde los eventos, no desde las tablas operativas.
+- OEE, FPY, MTBF y MTTR por linea y por dia.
+
+### Fase 19 - Integraciones
 
 Objetivo: integrar sistemas IT sin contaminar la logica MES.
 
-- Conectores ERP/BI/API.
-- Integracion B22 cuando aplique.
-- Contratos de entrada y salida.
-- Reintentos, errores, bitacora y reconciliacion.
+Estado: cerrada para el alcance inicial de conectores.
+
+- Conectores ERP, BI, API y B22, con direccion de entrada, salida o ambas.
+- Contratos con mapeo de campos en datos: el vocabulario ajeno no entra al codigo.
+- Cola de salida alimentada por el bus de eventos, idempotente por contrato y hecho.
+- Reintentos con espera creciente, descarte al agotar intentos y bitacora del error.
+- Reconciliacion: compara los eventos ocurridos contra los mensajes que salieron.
+- Entrada autenticada por token de conector, idempotente por identificador externo.
 
 ### Fase 20 - Piloto automotriz CIAUTO
 
 Objetivo: demostrar una historia completa de 8 a 10 minutos.
+
+Estado: cerrada. Se ejecuta con un comando y recorre los cinco modulos:
+
+```powershell
+.venv\Scripts\python.exe manage.py run_ciauto_pilot --schema demo --model WINGLE --units 2
+```
+
+El piloto escribe datos reales en el tenant indicado. Sirve para demostrar el
+sistema y para detectar cuando una fase se rompe contra otra: cada paso usa los
+servicios de produccion, y no una version paralela hecha para la demo.
 
 - Crear orden de produccion.
 - Cargar modelo Wingle/POER.
@@ -455,6 +484,89 @@ Produccion cubre:
 - Andon, paros, offline, mix y kits externos.
 - Indicadores MES.
 
+### Almacen
+
+Modulo logistico del sistema. Internamente vive en la app Django `wms` por
+separacion de responsabilidades, pero es un modulo mas del mismo monolito
+modular: comparte proyecto, base de datos, tenant, sesion y navegacion.
+
+Almacen cubre:
+
+- Maestro de materiales, categorias y trazabilidad por lote o serie.
+- Perfiles de ubicacion operativa: bodega, supermercado y line side.
+- Recepciones CKD por linea, con inspeccion y ubicacion.
+- Inventario por ubicacion y estado: disponible, bloqueado y cuarentena.
+- Movimientos trazados de inventario.
+- Kits de linea por unidad, serial o plan.
+- Misiones y tareas de picking.
+- Kanban digital y reglas de reposicion min/max.
+- Consumo de material en ensamble y validacion poka-yoke por escaneo.
+
+### Conectividad
+
+Modulo de conectividad OT. Internamente vive en la app Django `edge`, dentro
+del mismo monolito modular.
+
+Conectividad existe para que el MES no hable directo con maquinas. Recibe la senal
+tecnica cruda, la conserva tal cual para auditoria y recien despues decide que
+significa, delegando la escritura en los servicios de Produccion.
+
+Conectividad cubre:
+
+- Gateways: collectores de planta con token, latido y estado derivado.
+- Dispositivos: lectores, torquimetros, PLC, sensores e impresoras.
+- Reglas de normalizacion de senal tecnica a evento de estacion o medicion.
+- Senales crudas con su resultado, trazables y reprocesables.
+- Buffer offline: el reenvio no duplica gracias al identificador externo.
+- Salud de collectores: cola pendiente, buffer, latencia y version de agente.
+- Comandos hacia planta con handshake selectivo y expiracion.
+
+### Eventos
+
+Bus interno del sistema y sus indicadores. Vive en la app Django `eventbus`.
+
+Los modulos no se llaman entre si para avisar cosas: publican un hecho y quien
+necesite enterarse se suscribe. El bus nunca tumba la operacion que lo dispara;
+si falla, el evento no se publica y produccion sigue.
+
+Eventos cubre:
+
+- Catalogo formal con el contrato de claves de cada tipo de evento.
+- Historia de eventos publicados, con su clave de idempotencia y su carga.
+- Suscripciones por tipo o por dominio, con manejador y tope de intentos.
+- Entregas por suscriptor, con reintento manual y detalle del error.
+- Indicadores diarios por linea: OEE, FPY, MTBF y MTTR.
+
+Formulas de los indicadores, para que nadie las adivine:
+
+- disponibilidad = (turno - paros) / turno
+- rendimiento = unidades completadas / objetivo del plan
+- calidad = completadas / (completadas + fallas)
+- OEE = disponibilidad x rendimiento x calidad
+- FPY = completadas sin falla ni retrabajo / completadas
+- MTBF = minutos operando / cantidad de paros
+- MTTR = minutos de paro / cantidad de paros
+
+El turno sale del estudio de balanceo de la linea cuando existe; si no, usa 480
+minutos. Es configuracion, no un hecho ocurrido, y por eso no viene de un evento.
+
+### Integraciones
+
+Puente con sistemas IT externos. Vive en la app Django `connect`.
+
+Nada sale por accidente: un conector nace con transporte `LOG`, que arma y
+registra el mensaje sin mandarlo a ningun lado. Recien cuando alguien confirma
+el endpoint y cambia el transporte a HTTP el mensaje viaja de verdad.
+
+Integraciones cubre:
+
+- Conectores hacia ERP, BI, API externas y B22.
+- Contratos de salida disparados por un evento del bus, con mapeo de campos.
+- Contratos de entrada para lo que empuja el sistema externo.
+- Cola de salida con reintentos, espera creciente y descarte al agotar intentos.
+- Mensajes de entrada guardados antes de interpretarlos.
+- Reconciliacion por periodo, con reencolado de lo que quedo sin enviar.
+
 ### Configuracion
 
 Modulo transversal para datos base y reglas de operacion.
@@ -483,7 +595,7 @@ Usuarios administra:
 
 - No quemar lineas, estaciones ni equipos en codigo.
 - Lo configurable vive en Configuracion; lo operativo vive en Produccion.
-- El MES no habla directo con PLC ni maquinas; eso le pertenece a Edge.
+- El MES no habla directo con PLC ni maquinas; eso le pertenece a Conectividad.
 - Las integraciones IT externas pasan por Connect.
 - Los modulos se comunican mediante eventos.
 - La unidad serializada es el eje de trazabilidad.
@@ -512,11 +624,88 @@ Resumen:
 ```powershell
 poetry install
 .venv\Scripts\python.exe manage.py migrate_schemas --shared --noinput
+.venv\Scripts\python.exe manage.py migrate_schemas --tenant --noinput
 .venv\Scripts\python.exe manage.py runserver
 ```
 
+Los dos `migrate_schemas` son necesarios: `core`, `assembly` y `wms` viven en
+`TENANT_APPS`, asi que sus tablas se crean en el esquema de cada tenant, no en
+el esquema publico.
+
 La configuracion se toma de `.env`; usa `.env.example` como referencia. La base
 inicial no contiene empresas, usuarios ni datos demo.
+
+## Tareas de fondo
+
+En planta nadie va a estar apretando botones. El consumidor de huey ejecuta
+solo lo que antes era manual:
+
+```powershell
+.venv\Scripts\python.exe manage.py run_huey
+```
+
+| Tarea | Frecuencia | Que hace |
+| --- | --- | --- |
+| `dispatch_pending_deliveries` | cada minuto | Reparte eventos a sus suscriptores |
+| `flush_outbound_queue` | cada minuto | Envia la cola hacia sistemas externos |
+| `refresh_daily_indicators` | cada 10 min | Rehace OEE, FPY, MTBF y MTTR del dia |
+| `expire_stale_commands` | cada 5 min | Vence comandos que ningun gateway recogio |
+
+Cada tarea recorre los tenants uno por uno con `core.scheduling.for_each_tenant`:
+el consumidor arranca en el esquema publico, y sin entrar al esquema de cada
+tenant escribiria en el lugar equivocado. Si un tenant falla, se registra y los
+demas siguen.
+
+Requiere Redis corriendo (`REDIS_URL`).
+
+## Agente de planta
+
+El agente vive en [`edge_agent/`](edge_agent/) y es lo que corre en el PC de
+planta hablando con los equipos. No depende de Django ni del resto del
+proyecto: solo la libreria estandar de Python, para que instalarlo en una
+maquina de piso sea copiar una carpeta.
+
+```powershell
+copy edge_agentgent.example.json agent.json
+# editar agent.json con el token del gateway y los dispositivos
+python -m edge_agent --config agent.json --check    # valida token y dispositivos
+python -m edge_agent --config agent.json            # arranca
+```
+
+El token se obtiene en Conectividad > Gateways > el gateway > Token del collector.
+
+Drivers disponibles:
+
+- `simulator`: genera lecturas plausibles, con porcentaje configurable fuera de
+  rango. Sirve para probar red, token y reglas antes de que llegue el equipo.
+- `tcp`: lee lineas de un socket (PLC, banco de pruebas, balanza).
+- `serial`: lee de un puerto COM. Requiere `pyserial`.
+- `file`: sigue un archivo que el equipo va escribiendo. Integra equipos viejos
+  sin API sin tener que tocarlos.
+
+El agente guarda cada lectura en un SQLite local **antes** de intentar
+enviarla. Ese orden es lo que hace que un corte de red no pierda produccion: al
+reconectar, reenvia lo acumulado y el servidor descarta los duplicados por su
+identificador externo. Las lecturas solo salen del buffer cuando el servidor
+confirma que las recibio.
+
+Tambien atiende los comandos que bajan del MES: `PING`, `FLUSH_BUFFER`,
+`RELOAD_CONFIG` y `RESTART_AGENT`.
+
+## Despliegue
+
+```bash
+docker compose up --build
+docker compose exec web python manage.py populate_kore_serial
+```
+
+Levanta Postgres, Redis, el servidor web y el worker de tareas. La imagen es
+una sola para web y worker: el mismo codigo con distinto comando. El worker no
+corre migraciones a proposito, para que dos procesos no las ejecuten a la vez.
+
+La integracion continua vive en [`.github/workflows/ci.yml`](.github/workflows/ci.yml):
+revisa configuracion, verifica que no falten migraciones por generar y corre la
+suite completa contra Postgres.
 
 ## Verificacion
 

@@ -1,0 +1,31 @@
+{
+  "base_url": "http://localhost:8000",
+  "host_header": "demo.localhost",
+  "token": "PEGA-AQUI-EL-TOKEN-DEL-GATEWAY",
+  "heartbeat_seconds": 30,
+  "send_seconds": 5,
+  "command_seconds": 15,
+  "batch_size": 50,
+  "buffer_path": "edge_agent_buffer.sqlite3",
+  "devices": [
+    {
+      "code": "DEV-TORQ-01",
+      "driver": "simulator",
+      "signal_key": "torque.final",
+      "interval_seconds": 20,
+      "options": {
+        "min": 40,
+        "max": 45,
+        "out_of_range_ratio": 0.15,
+        "unit_serial_number": "KS-2026-0001"
+      }
+    },
+    {
+      "code": "DEV-SCAN-01",
+      "driver": "tcp",
+      "signal_key": "scan.unit",
+      "interval_seconds": 2,
+      "options": { "host": "127.0.0.1", "port": 9100, "read_timeout": 1 }
+    }
+  ]
+}

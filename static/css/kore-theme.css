@@ -393,3 +393,40 @@ textarea:focus {
   background: var(--kore-surface);
   color: #4d4d4d;
 }
+
+/* ---------------------------------------------------------------------------
+   Utilidades de grilla que faltan en el bundle de Tailwind.
+
+   `static/css/app.css` es un build de Tailwind commiteado al repo, y no hay
+   forma de regenerarlo: no existe package.json ni configuracion de Tailwind.
+   Ese bundle solo trae las clases que se usaban el dia que se compilo, asi que
+   cualquier clase nueva escrita en una plantilla no hace nada y la grilla se
+   apila en una sola columna sin avisar.
+
+   Estas reglas cubren las que hoy usan las plantillas y no estan en el bundle.
+   Si mas adelante se agrega un build de Tailwind, este bloque sobra.
+   Puntos de corte iguales a los de Tailwind v4.
+   --------------------------------------------------------------------------- */
+
+.grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.grid-cols-7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+
+@media (min-width: 48rem) {
+  .md\:grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .md\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .md\:grid-cols-7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+}
+
+@media (min-width: 64rem) {
+  .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .lg\:grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .lg\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .lg\:grid-cols-7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+}
+
+@media (min-width: 80rem) {
+  .xl\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .xl\:grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .xl\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}

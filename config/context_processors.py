@@ -6,6 +6,22 @@ def module_access(request):
         is_authenticated
         and (user.is_superuser or user.has_perm("assembly.view_serializedunit"))
     )
+    warehouse_allowed = bool(
+        is_authenticated
+        and (user.is_superuser or user.has_perm("wms.view_material"))
+    )
+    edge_allowed = bool(
+        is_authenticated
+        and (user.is_superuser or user.has_perm("edge.view_edgegateway"))
+    )
+    events_allowed = bool(
+        is_authenticated
+        and (user.is_superuser or user.has_perm("eventbus.view_domainevent"))
+    )
+    connect_allowed = bool(
+        is_authenticated
+        and (user.is_superuser or user.has_perm("connect.view_connector"))
+    )
     is_tenant_admin = False
     if is_authenticated:
         if user.is_superuser or user.groups.filter(name="admin").exists():
@@ -61,6 +77,10 @@ def module_access(request):
     }
     is_configuration_area = namespace == "core" or url_name in configuration_url_names
     is_production_area = namespace == "assembly" and not is_configuration_area
+    is_warehouse_area = namespace == "wms"
+    is_edge_area = namespace == "edge"
+    is_events_area = namespace == "eventbus"
+    is_connect_area = namespace == "connect"
 
     # The copied shell contains links for modules intentionally absent here.
     # Keep their administrative links hidden until their own UI is introduced.
@@ -68,9 +88,18 @@ def module_access(request):
         "modules": {
             "assembly": production_allowed,
             "production": production_allowed,
+            "wms": warehouse_allowed,
+            "warehouse": warehouse_allowed,
+            "edge": edge_allowed,
+            "eventbus": events_allowed,
+            "connect": connect_allowed,
             "core": is_tenant_admin,
         },
         "is_tenant_admin": is_tenant_admin,
         "is_configuration_area": is_configuration_area,
         "is_production_area": is_production_area,
+        "is_warehouse_area": is_warehouse_area,
+        "is_edge_area": is_edge_area,
+        "is_events_area": is_events_area,
+        "is_connect_area": is_connect_area,
     }

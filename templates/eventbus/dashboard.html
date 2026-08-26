@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Eventos | Kore Line{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-3">
+  {% include "eventbus/_nav.html" with nav_key="dashboard" %}
+
+  <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">Eventos</p>
+      <h1 class="mt-1 text-2xl font-semibold text-gray-900">Bus interno e indicadores</h1>
+      <p class="mt-1 text-sm text-gray-600">Un hecho se publica una vez y alimenta a todos los modulos.</p>
+    </div>
+    {% if can_operate %}
+      <div class="flex flex-wrap gap-2">
+        <form method="post" action="{% url 'eventbus:delivery_dispatch' %}">
+          {% csrf_token %}
+          <button type="submit" class="inline-flex h-9 items-center rounded-lg border px-4 text-sm text-gray-700 hover:bg-gray-50">Procesar pendientes</button>
+        </form>
+        <form method="post" action="{% url 'eventbus:indicator_rebuild' %}">
+          {% csrf_token %}
+          <button type="submit" class="inline-flex h-9 items-center rounded-lg bg-orange-600 px-4 text-sm font-semibold text-white hover:bg-orange-700">Recalcular indicadores de hoy</button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+
+  <section class="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Tipos activos</p><p class="mt-2 text-2xl font-semibold">{{ event_types }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Suscripciones</p><p class="mt-2 text-2xl font-semibold">{{ subscriptions }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Eventos hoy</p><p class="mt-2 text-2xl font-semibold">{{ events_today }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Eventos totales</p><p class="mt-2 text-2xl font-semibold">{{ events_total }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Entregas pendientes</p><p class="mt-2 text-2xl font-semibold {% if pending_deliveries %}text-amber-700{% endif %}">{{ pending_deliveries }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Entregas fallidas</p><p class="mt-2 text-2xl font-semibold {% if failed_deliveries %}text-red-700{% endif %}">{{ failed_deliveries }}</p></div>
+  </section>
+
+  <section class="mt-5 rounded-lg border bg-white">
+    <div class="border-b px-4 py-3"><h2 class="text-sm font-semibold">Indicadores de hoy</h2></div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500">
+          <tr>
+            <th class="px-4 py-2">Linea</th>
+            <th class="px-4 py-2">OEE</th>
+            <th class="px-4 py-2">Disponibilidad</th>
+            <th class="px-4 py-2">Rendimiento</th>
+            <th class="px-4 py-2">Calidad</th>
+            <th class="px-4 py-2">FPY</th>
+            <th class="px-4 py-2">MTBF</th>
+            <th class="px-4 py-2">MTTR</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y">
+          {% for snapshot in today_snapshots %}
+            <tr>
+              <td class="px-4 py-3 font-medium">{{ snapshot.line_label }}</td>
+              <td class="px-4 py-3 font-semibold {% if snapshot.oee_percent %}text-orange-700{% endif %}">{{ snapshot.oee_percent|default:"-" }}{% if snapshot.oee_percent %}%{% endif %}</td>
+              <td class="px-4 py-3">{{ snapshot.availability_percent|default:"-" }}</td>
+              <td class="px-4 py-3">{{ snapshot.performance_percent|default:"-" }}</td>
+              <td class="px-4 py-3">{{ snapshot.quality_percent|default:"-" }}</td>
+              <td class="px-4 py-3">{{ snapshot.fpy_percent|default:"-" }}</td>
+              <td class="px-4 py-3">{{ snapshot.mtbf_minutes|default:"-" }}</td>
+              <td class="px-4 py-3">{{ snapshot.mttr_minutes|default:"-" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="8" class="px-4 py-6 text-sm text-gray-500">Aun no hay indicadores calculados para hoy.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-5 grid gap-5 lg:grid-cols-2">
+    <div class="rounded-lg border bg-white">
+      <div class="border-b px-4 py-3"><h2 class="text-sm font-semibold">Eventos por dominio</h2></div>
+      <div class="divide-y">
+        {% for row in by_domain %}
+          <div class="flex items-center justify-between px-4 py-3 text-sm">
+            <span>{{ row.event_type__domain }}</span>
+            <span class="font-semibold">{{ row.total }}</span>
+          </div>
+        {% empty %}
+          <p class="px-4 py-6 text-sm text-gray-500">Sin eventos publicados.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="rounded-lg border bg-white">
+      <div class="border-b px-4 py-3"><h2 class="text-sm font-semibold">Ultimos eventos</h2></div>
+      <div class="divide-y">
+        {% for event in recent_events %}
+          <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+            <span><a href="{% url 'eventbus:event_detail' event.pk %}" class="font-semibold text-orange-700 hover:underline">{{ event.event_type.code }}</a> · {{ event.aggregate_id|default:"-" }}</span>
+            <span class="text-gray-500">{{ event.occurred_at|date:"d/m/Y H:i:s" }}</span>
+          </div>
+        {% empty %}
+          <p class="px-4 py-6 text-sm text-gray-500">Sin eventos publicados.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

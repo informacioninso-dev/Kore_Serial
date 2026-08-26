@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}{{ event.event_type.code }} | Evento{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-3">
+  {% include "eventbus/_nav.html" with nav_key=nav_key %}
+
+  <div class="mb-4">
+    <p class="text-xs font-semibold uppercase tracking-wide text-orange-700">Evento</p>
+    <h1 class="mt-1 text-xl font-semibold text-gray-900">{{ event.event_type.code }}</h1>
+    <p class="mt-1 text-sm text-gray-600">{{ event.event_type.name }} · {{ event.occurred_at|date:"d/m/Y H:i:s" }}</p>
+  </div>
+
+  <section class="rounded-lg border bg-white p-4 text-sm">
+    <dl class="grid gap-3 md:grid-cols-3">
+      <div><dt class="text-xs uppercase text-gray-500">Clave de idempotencia</dt><dd class="font-mono text-xs">{{ event.idempotency_key }}</dd></div>
+      <div><dt class="text-xs uppercase text-gray-500">Dominio</dt><dd>{{ event.event_type.get_domain_display }}</dd></div>
+      <div><dt class="text-xs uppercase text-gray-500">Modulo origen</dt><dd>{{ event.source_module|default:"-" }}</dd></div>
+      <div><dt class="text-xs uppercase text-gray-500">Agregado</dt><dd>{{ event.aggregate_type|default:"-" }} {{ event.aggregate_id }}</dd></div>
+      <div><dt class="text-xs uppercase text-gray-500">Linea</dt><dd>{{ event.line.code|default:"-" }}</dd></div>
+      <div><dt class="text-xs uppercase text-gray-500">Actor</dt><dd>{{ event.actor.get_username|default:"sistema" }}</dd></div>
+    </dl>
+    {% if missing_keys %}
+      <p class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        El emisor no envio estas claves del contrato: {{ missing_keys|join:", " }}
+      </p>
+    {% endif %}
+  </section>
+
+  <section class="mt-4 rounded-lg border bg-white">
+    <div class="border-b px-4 py-3"><h2 class="text-sm font-semibold">Entregas</h2></div>
+    <div class="divide-y">
+      {% for delivery in deliveries %}
+        <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+          <span>
+            <strong>{{ delivery.subscription.code }}</strong>
+            <span class="text-gray-500">{{ delivery.subscription.get_handler_display }}</span>
+          </span>
+          <span class="flex items-center gap-3">
+            <span class="text-gray-500">intento {{ delivery.attempts }}/{{ delivery.subscription.max_attempts }}</span>
+            <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium
+              {% if delivery.status == 'DELIVERED' %}border-emerald-200 bg-emerald-50 text-emerald-700
+              {% elif delivery.status == 'FAILED' %}border-red-200 bg-red-50 text-red-700
+              {% elif delivery.status == 'PENDING' %}border-amber-200 bg-amber-50 text-amber-700
+              {% else %}border-gray-200 bg-gray-50 text-gray-700{% endif %}">
+              {{ delivery.get_status_display }}
+            </span>
+            {% if can_retry and delivery.status != 'DELIVERED' %}
+              <form method="post" action="{% url 'eventbus:delivery_retry' delivery.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="rounded-lg border px-3 py-1 text-xs text-gray-700 hover:bg-gray-50">Reintentar</button>
+              </form>
+            {% endif %}
+          </span>
+        </div>
+        {% if delivery.last_error %}
+          <p class="bg-red-50 px-4 py-2 text-xs text-red-800">{{ delivery.last_error }}</p>
+        {% endif %}
+      {% empty %}
+        <p class="px-4 py-6 text-sm text-gray-500">Ninguna suscripcion escucha este evento.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="mt-4 rounded-lg border bg-white p-4">
+    <p class="text-xs uppercase text-gray-500">Carga</p>
+    <pre class="mt-2 overflow-x-auto rounded-lg bg-gray-50 p-3 text-xs text-gray-700">{{ event.payload|pprint }}</pre>
+  </section>
+</div>
+{% endblock %}

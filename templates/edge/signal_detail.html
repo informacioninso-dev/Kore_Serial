@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}{{ signal.signal_key }} | Senal{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-3">
+  {% include "edge/_nav.html" with nav_key=nav_key %}
+
+  <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wide text-orange-700">Senal</p>
+      <h1 class="mt-1 text-xl font-semibold text-gray-900">{{ signal.signal_key }}</h1>
+      <p class="mt-1 text-sm text-gray-600">{{ signal.gateway.code }} / {{ signal.device.code }} · {{ signal.captured_at|date:"d/m/Y H:i:s" }}</p>
+    </div>
+    {% if can_retry %}
+      <form method="post" action="{% url 'edge:signal_retry' signal.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="inline-flex h-9 items-center rounded-lg bg-orange-600 px-4 text-sm font-semibold text-white hover:bg-orange-700">Reintentar normalizacion</button>
+      </form>
+    {% endif %}
+  </div>
+
+  <section class="grid gap-3 md:grid-cols-4">
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs uppercase text-gray-500">Estado</p>
+      <p class="mt-2 text-lg font-semibold
+        {% if signal.status == 'NORMALIZED' %}text-emerald-700
+        {% elif signal.status == 'REJECTED' %}text-red-700
+        {% elif signal.status == 'PENDING' %}text-amber-700{% endif %}">
+        {{ signal.get_status_display }}
+      </p>
+    </div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Valor crudo</p><p class="mt-2 text-lg font-semibold">{{ signal.raw_value|default:"-" }} {{ signal.unit_of_measure }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Origen</p><p class="mt-2 text-lg font-semibold">{% if signal.from_buffer %}Buffer offline{% else %}En linea{% endif %}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Latencia</p><p class="mt-2 text-lg font-semibold">{% if signal.latency_seconds is not None %}{{ signal.latency_seconds }}s{% else %}-{% endif %}</p></div>
+  </section>
+
+  <section class="mt-4 rounded-lg border bg-white p-4 text-sm">
+    <dl class="grid gap-3 md:grid-cols-2">
+      <div><dt class="text-xs uppercase text-gray-500">Identificador externo</dt><dd class="font-mono text-xs">{{ signal.external_id }}</dd></div>
+      <div><dt class="text-xs uppercase text-gray-500">Regla aplicada</dt><dd>{% if signal.rule %}{{ signal.rule.code }} · {{ signal.rule.name }}{% else %}Sin regla{% endif %}</dd></div>
+      <div><dt class="text-xs uppercase text-gray-500">Unidad</dt><dd>{{ signal.unit_serial_number|default:"-" }}</dd></div>
+      <div><dt class="text-xs uppercase text-gray-500">Operario</dt><dd>{{ signal.operator_username|default:"-" }}</dd></div>
+      <div><dt class="text-xs uppercase text-gray-500">Recibida</dt><dd>{{ signal.received_at|date:"d/m/Y H:i:s" }}</dd></div>
+      <div><dt class="text-xs uppercase text-gray-500">Normalizada</dt><dd>{% if signal.normalized_at %}{{ signal.normalized_at|date:"d/m/Y H:i:s" }}{% else %}-{% endif %}</dd></div>
+    </dl>
+    {% if signal.result_detail %}
+      <p class="mt-3 rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-700">{{ signal.result_detail }}</p>
+    {% endif %}
+  </section>
+
+  <section class="mt-4 rounded-lg border bg-white p-4 text-sm">
+    <p class="text-xs uppercase text-gray-500">Resultado en el MES</p>
+    <div class="mt-2 space-y-1">
+      {% if signal.inbound_event %}
+        <p>Evento de estacion: <strong>{{ signal.inbound_event.get_event_type_display }}</strong> · {{ signal.inbound_event.get_status_display }}</p>
+      {% endif %}
+      {% if signal.measurement %}
+        <p>Medicion: <strong>{{ signal.measurement.code }}</strong> · {{ signal.measurement.value|default:signal.measurement.text_value }}</p>
+      {% endif %}
+      {% if not signal.inbound_event and not signal.measurement %}
+        <p class="text-gray-500">Esta senal todavia no genero un hecho en el MES.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="mt-4 rounded-lg border bg-white p-4">
+    <p class="text-xs uppercase text-gray-500">Carga original</p>
+    <pre class="mt-2 overflow-x-auto rounded-lg bg-gray-50 p-3 text-xs text-gray-700">{{ signal.payload|pprint }}</pre>
+  </section>
+</div>
+{% endblock %}

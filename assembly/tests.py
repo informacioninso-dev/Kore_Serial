@@ -2123,16 +2123,26 @@ class SerializedUnitTests(TenantTestCase):
         production = self.client.get("/produccion/")
 
         self.assertEqual(production.status_code, 200)
-        self.assertContains(production, ">1. OP<", html=False)
-        self.assertContains(production, ">4. Estacion<", html=False)
-        self.assertContains(production, ">Eventos<", html=False)
-        self.assertContains(production, ">Componentes<", html=False)
+
+        # La barra agrupa por etapa del flujo. Los numerales que antes daban el
+        # orden ("1. OP", "5. Calidad") sobran cuando el grupo ya lo dice.
+        for grupo in ("Ejecucion", "Trazabilidad", "Calidad", "Analisis"):
+            self.assertContains(production, grupo, html=False)
+
+        self.assertContains(production, ">Ordenes de produccion<", html=False)
+        self.assertContains(production, ">Consola de estacion<", html=False)
+        self.assertContains(production, ">Eventos de estacion<", html=False)
+        self.assertContains(production, ">Componentes instalados<", html=False)
         self.assertContains(production, ">Genealogia<", html=False)
         self.assertContains(production, ">Mediciones<", html=False)
-        self.assertContains(production, ">5. Calidad<", html=False)
+        self.assertContains(production, ">Controles de calidad<", html=False)
         self.assertContains(production, ">Retrabajos<", html=False)
-        self.assertContains(production, ">6. Liberacion<", html=False)
-        self.assertContains(production, ">7. Indicadores<", html=False)
+        self.assertContains(production, ">Liberacion<", html=False)
+        self.assertContains(production, ">Indicadores MES<", html=False)
+
+        # Y ya no quedan numerales sueltos delante de las etiquetas.
+        for numeral in ("1. OP", "4. Estacion", "5. Calidad", "7. Indicadores"):
+            self.assertNotContains(production, numeral, html=False)
         self.assertNotContains(production, ">Versiones<", html=False)
         self.assertNotContains(production, ">Lineas<", html=False)
         self.assertNotContains(production, ">Plantas<", html=False)

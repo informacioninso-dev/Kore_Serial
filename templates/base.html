@@ -20,10 +20,14 @@
 {% include 'partials/_navbar.html' %}
 
 
-<main id="content" class="kore-main w-full flex-1 pt-3 pb-4">
+<div class="flex flex-1 items-start gap-0">
+{% include 'partials/_sidebar.html' %}
+
+<main id="content" class="kore-main min-w-0 flex-1 pt-3 pb-4">
 {% include 'partials/_flash.html' %}
 {% block content %}{% endblock %}
 </main>
+</div>
 
 
 {% include 'partials/_footer.html' %}

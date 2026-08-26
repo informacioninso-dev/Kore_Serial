@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}{{ connector.code }} | Integraciones{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-3">
+  {% include "connect/_nav.html" with nav_key=nav_key %}
+
+  <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wide text-orange-700">Conector</p>
+      <h1 class="mt-1 text-xl font-semibold text-gray-900">{{ connector.code }} · {{ connector.name }}</h1>
+      <p class="mt-1 text-sm text-gray-600">{{ connector.get_system_display }} · {{ connector.get_direction_display }} · {{ connector.endpoint|default:"sin endpoint" }}</p>
+    </div>
+    {% if perms.connect.change_connector %}
+      <a href="{% url 'connect:connector_update' connector.pk %}" class="inline-flex h-9 items-center rounded-lg bg-orange-600 px-4 text-sm font-semibold text-white hover:bg-orange-700">Editar</a>
+    {% endif %}
+  </div>
+
+  {% if connector.transport == 'LOG' %}
+    <p class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      Transporte en <strong>LOG</strong>: los mensajes se arman y quedan registrados, pero no salen a la red.
+      Cambialo a HTTP cuando el endpoint este confirmado.
+    </p>
+  {% endif %}
+
+  <section class="grid gap-3 md:grid-cols-4">
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Transporte</p><p class="mt-2 text-lg font-semibold">{{ connector.get_transport_display }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Intentos maximos</p><p class="mt-2 text-lg font-semibold">{{ connector.max_attempts }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Espera entre intentos</p><p class="mt-2 text-lg font-semibold">{{ connector.retry_backoff_seconds }}s</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Timeout</p><p class="mt-2 text-lg font-semibold">{{ connector.timeout_seconds }}s</p></div>
+  </section>
+
+  <section class="mt-5 rounded-lg border bg-white">
+    <div class="flex items-center justify-between border-b px-4 py-3">
+      <h2 class="text-sm font-semibold">Contratos</h2>
+      {% if perms.connect.add_connectorcontract %}<a href="{% url 'connect:contract_create' %}" class="text-sm font-medium text-orange-700 hover:underline">Agregar</a>{% endif %}
+    </div>
+    <div class="divide-y">
+      {% for contract in contracts %}
+        <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+          <span><strong>{{ contract.code }}</strong> · {{ contract.name }}</span>
+          <span class="text-gray-500">{{ contract.get_direction_display }} · {{ contract.event_type.code|default:"sin evento" }}</span>
+        </div>
+      {% empty %}
+        <p class="px-4 py-6 text-sm text-gray-500">Este conector no tiene contratos.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="mt-5 grid gap-5 lg:grid-cols-2">
+    <div class="rounded-lg border bg-white">
+      <div class="border-b px-4 py-3"><h2 class="text-sm font-semibold">Salida reciente</h2></div>
+      <div class="divide-y">
+        {% for message in recent_outbound %}
+          <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+            <span><a href="{% url 'connect:outbound_detail' message.pk %}" class="font-semibold text-orange-700 hover:underline">{{ message.contract.code }}</a></span>
+            <span class="text-gray-500">{{ message.get_status_display }} · intento {{ message.attempts }}</span>
+          </div>
+        {% empty %}
+          <p class="px-4 py-6 text-sm text-gray-500">Sin mensajes enviados.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="rounded-lg border bg-white">
+      <div class="border-b px-4 py-3"><h2 class="text-sm font-semibold">Entrada reciente</h2></div>
+      <div class="divide-y">
+        {% for message in recent_inbound %}
+          <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+            <span>{{ message.external_id }}</span>
+            <span class="text-gray-500">{{ message.get_status_display }} · {{ message.received_at|date:"d/m/Y H:i" }}</span>
+          </div>
+        {% empty %}
+          <p class="px-4 py-6 text-sm text-gray-500">Sin mensajes recibidos.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

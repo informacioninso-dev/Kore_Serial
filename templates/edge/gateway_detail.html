@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}{{ gateway.code }} | Conectividad{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-3">
+  {% include "edge/_nav.html" with nav_key=nav_key %}
+
+  <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wide text-orange-700">Gateway</p>
+      <h1 class="mt-1 text-xl font-semibold text-gray-900">{{ gateway.code }} · {{ gateway.name }}</h1>
+      <p class="mt-1 text-sm text-gray-600">{{ gateway.plant.name|default:"Sin planta" }} · {{ gateway.host|default:"Sin host" }} · agente {{ gateway.agent_version|default:"desconocido" }}</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      {% if can_command %}
+        <form method="post" action="{% url 'edge:gateway_ping' gateway.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="inline-flex h-9 items-center rounded-lg border px-4 text-sm text-gray-700 hover:bg-gray-50">Encolar ping</button>
+        </form>
+      {% endif %}
+      {% if can_rotate %}
+        <form method="post" action="{% url 'edge:gateway_rotate_token' gateway.pk %}" onsubmit="return confirm('El collector dejara de reportar hasta que cargues el token nuevo. Continuar?')">
+          {% csrf_token %}
+          <button type="submit" class="inline-flex h-9 items-center rounded-lg border px-4 text-sm text-gray-700 hover:bg-gray-50">Regenerar token</button>
+        </form>
+        <a href="{% url 'edge:gateway_update' gateway.pk %}" class="inline-flex h-9 items-center rounded-lg bg-orange-600 px-4 text-sm font-semibold text-white hover:bg-orange-700">Editar</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <section class="grid gap-3 md:grid-cols-4">
+    <div class="rounded-lg border bg-white p-4">
+      <p class="text-xs uppercase text-gray-500">Estado</p>
+      <p class="mt-2 text-lg font-semibold
+        {% if gateway.health_status == 'ONLINE' %}text-emerald-700
+        {% elif gateway.health_status == 'DEGRADED' %}text-amber-700
+        {% elif gateway.health_status == 'OFFLINE' %}text-red-700{% endif %}">
+        {{ gateway.health_status_label }}
+      </p>
+    </div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Ultimo contacto</p><p class="mt-2 text-lg font-semibold">{% if gateway.seconds_since_last_seen is None %}Nunca{% else %}hace {{ gateway.seconds_since_last_seen }}s{% endif %}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Buffer offline</p><p class="mt-2 text-lg font-semibold {% if gateway.buffered_signal_count %}text-amber-700{% endif %}">{{ gateway.buffered_signal_count }}</p></div>
+    <div class="rounded-lg border bg-white p-4"><p class="text-xs uppercase text-gray-500">Latido esperado</p><p class="mt-2 text-lg font-semibold">{{ gateway.heartbeat_interval_seconds }}s</p></div>
+  </section>
+
+  {% if can_rotate %}
+    <section class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
+      <p class="font-medium text-amber-900">Token del collector</p>
+      <p class="mt-1 break-all font-mono text-xs text-amber-900">{{ gateway.auth_token }}</p>
+      <p class="mt-2 text-xs text-amber-800">El agente lo envia en la cabecera <span class="font-mono">X-Edge-Token</span>. Tratalo como una credencial.</p>
+    </section>
+  {% endif %}
+
+  <section class="mt-5 rounded-lg border bg-white">
+    <div class="flex items-center justify-between border-b px-4 py-3">
+      <h2 class="text-sm font-semibold">Dispositivos</h2>
+      {% if perms.edge.add_edgedevice %}<a href="{% url 'edge:device_create' %}" class="text-sm font-medium text-orange-700 hover:underline">Agregar</a>{% endif %}
+    </div>
+    <div class="divide-y">
+      {% for device in devices %}
+        <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+          <span><strong>{{ device.code }}</strong> · {{ device.name }} <span class="text-gray-500">{{ device.get_device_type_display }}</span></span>
+          <span class="text-gray-500">
+            {{ device.equipment.code|default:"sin equipo" }} · {{ device.station.code|default:"sin estacion" }} ·
+            {% if device.last_seen_at %}{{ device.last_seen_at|date:"d/m/Y H:i" }}{% else %}sin datos{% endif %}
+          </span>
+        </div>
+      {% empty %}
+        <p class="px-4 py-6 text-sm text-gray-500">Este gateway no tiene dispositivos conectados.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="mt-5 grid gap-5 lg:grid-cols-2">
+    <div class="rounded-lg border bg-white">
+      <div class="border-b px-4 py-3"><h2 class="text-sm font-semibold">Ultimos latidos</h2></div>
+      <div class="divide-y">
+        {% for check in recent_health %}
+          <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+            <span>{{ check.reported_at|date:"d/m/Y H:i:s" }}</span>
+            <span class="text-gray-500">cola {{ check.queue_depth }} · buffer {{ check.buffered_count }} · {% if check.latency_ms %}{{ check.latency_ms }} ms{% else %}sin latencia{% endif %}</span>
+          </div>
+        {% empty %}
+          <p class="px-4 py-6 text-sm text-gray-500">Sin latidos recibidos.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="rounded-lg border bg-white">
+      <div class="border-b px-4 py-3"><h2 class="text-sm font-semibold">Comandos recientes</h2></div>
+      <div class="divide-y">
+        {% for command in commands %}
+          <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+            <span>{{ command.get_command_type_display }} <span class="text-gray-500">{{ command.device.code|default:"gateway" }}</span></span>
+            <span class="text-gray-500">{{ command.get_status_display }} · {{ command.issued_at|date:"d/m/Y H:i" }}</span>
+          </div>
+        {% empty %}
+          <p class="px-4 py-6 text-sm text-gray-500">Sin comandos emitidos.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-5 rounded-lg border bg-white">
+    <div class="border-b px-4 py-3"><h2 class="text-sm font-semibold">Ultimas senales</h2></div>
+    <div class="divide-y">
+      {% for signal in recent_signals %}
+        <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+          <span><a href="{% url 'edge:signal_detail' signal.pk %}" class="font-semibold text-orange-700 hover:underline">{{ signal.signal_key }}</a> · {{ signal.device.code }}</span>
+          <span class="text-gray-500">{{ signal.raw_value|default:"-" }} · {{ signal.get_status_display }} · {{ signal.captured_at|date:"d/m/Y H:i:s" }}</span>
+        </div>
+      {% empty %}
+        <p class="px-4 py-6 text-sm text-gray-500">Sin senales recibidas.</p>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

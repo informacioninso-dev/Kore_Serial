@@ -508,7 +508,11 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                     "can_view_production": False,
                     "is_tenant_admin": is_tenant_admin,
                     "tenant_name": getattr(getattr(self.request, "tenant", None), "name", "Kore Line"),
-                    "module_cards": self._admin_module_cards(is_tenant_admin),
+                    "module_cards": self._warehouse_module_cards()
+                    + self._edge_module_cards()
+                    + self._events_module_cards()
+                    + self._connect_module_cards()
+                    + self._admin_module_cards(is_tenant_admin),
                 }
             )
             return context
@@ -738,10 +742,89 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                         "enabled": True,
                     },
                 ]
+                + self._warehouse_module_cards()
+                + self._edge_module_cards()
+                + self._events_module_cards()
+                + self._connect_module_cards()
                 + self._admin_module_cards(is_tenant_admin, active_users),
             }
         )
         return context
+
+    def _warehouse_module_cards(self):
+        """Almacen is a module of the same product, not a separate system."""
+        if not self._has_perm("wms.view_material"):
+            return []
+        from wms.models import PickMission, PickMissionStatus
+
+        open_missions = PickMission.objects.filter(
+            status__in=[PickMissionStatus.RELEASED, PickMissionStatus.IN_PROGRESS]
+        ).count()
+        return [
+            {
+                "label": "Almacen",
+                "metric": "misiones de picking activas",
+                "value": open_missions,
+                "href": reverse("wms:dashboard"),
+                "enabled": True,
+            },
+        ]
+
+    def _edge_module_cards(self):
+        """Edge es el puente OT: lo que interesa de un vistazo es si reporta."""
+        if not self._has_perm("edge.view_edgegateway"):
+            return []
+        from edge.models import EdgeGateway, EdgeGatewayStatus
+
+        gateways = list(EdgeGateway.objects.all())
+        healthy = sum(1 for gateway in gateways if gateway.health_status == EdgeGatewayStatus.ONLINE)
+        return [
+            {
+                "label": "Conectividad",
+                "metric": f"{healthy} de {len(gateways)} gateways en linea",
+                "value": sum(gateway.buffered_signal_count for gateway in gateways),
+                "href": reverse("edge:dashboard"),
+                "enabled": True,
+            },
+        ]
+
+    def _events_module_cards(self):
+        """Del bus interesa el OEE del dia y lo que quedo sin entregar."""
+        if not self._has_perm("eventbus.view_domainevent"):
+            return []
+        from eventbus.models import DeliveryStatus, EventDelivery, IndicatorSnapshot
+
+        today = timezone.localdate()
+        snapshot = IndicatorSnapshot.objects.filter(date=today, line__isnull=True).first()
+        pending = EventDelivery.objects.filter(status=DeliveryStatus.PENDING).count()
+        return [
+            {
+                "label": "Eventos",
+                "metric": f"{pending} entregas pendientes",
+                "value": f"OEE {snapshot.oee_percent}%" if snapshot and snapshot.oee_percent is not None else "OEE -",
+                "href": reverse("eventbus:dashboard"),
+                "enabled": True,
+            },
+        ]
+
+    def _connect_module_cards(self):
+        """De integraciones importa lo que quedo atascado hacia afuera."""
+        if not self._has_perm("connect.view_connector"):
+            return []
+        from connect.models import Connector, MessageStatus, OutboundMessage
+
+        stuck = OutboundMessage.objects.filter(
+            status__in=[MessageStatus.QUEUED, MessageStatus.FAILED]
+        ).count()
+        return [
+            {
+                "label": "Integraciones",
+                "metric": f"{Connector.objects.filter(is_active=True).count()} conectores activos",
+                "value": stuck,
+                "href": reverse("connect:dashboard"),
+                "enabled": True,
+            },
+        ]
 
     def _admin_module_cards(self, is_tenant_admin, active_users=None):
         if not is_tenant_admin:
@@ -776,6 +859,11 @@ class PublicDashboardView(TemplateView):
                     "partners": False,
                     "procurement": False,
                     "production": False,
+                    "wms": False,
+                    "warehouse": False,
+                    "edge": False,
+                    "eventbus": False,
+                    "connect": False,
                     "quality": False,
                     "sales": False,
                     "inventory": False,

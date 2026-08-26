@@ -12,18 +12,6 @@
     <!-- Desktop nav -->
     <nav class="hidden md:flex items-center gap-6">
       {% if request.user.is_authenticated %}
-        {% with ns=request.resolver_match.namespace %}
-          <a href="{% url 'dashboard' %}" class="kore-topbar-link {% if not ns and request.resolver_match.url_name == 'dashboard' %}font-semibold{% endif %}">Inicio</a>
-          {% if modules.production %}
-            <a href="{% url 'assembly:index' %}" class="kore-topbar-link {% if is_production_area %}font-semibold{% endif %}">Planta</a>
-          {% endif %}
-          {% if is_tenant_admin %}
-            <a href="{% url 'tenant_users' %}" class="kore-topbar-link {% if request.resolver_match.url_name == 'tenant_users' %}font-semibold{% endif %}">Usuarios</a>
-          {% endif %}
-          {% if modules.core %}
-            <a href="{% url 'core:settings' %}" class="kore-topbar-link {% if is_configuration_area %}font-semibold{% endif %}">Configuracion</a>
-          {% endif %}
-        {% endwith %}
         <span class="kore-topbar-meta">Hola, {{ request.user.get_username }}</span>
         <a href="{% url 'password_change' %}" class="kore-topbar-link">Cambiar contraseña</a>
         <form method="post" action="{% url 'logout' %}" class="inline">
@@ -96,6 +84,30 @@
       <a href="{% url 'assembly:index' %}"
          class="{% if is_production_area %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
         Planta
+      </a>
+      {% endif %}
+      {% if modules.wms %}
+      <a href="{% url 'wms:dashboard' %}"
+         class="{% if is_warehouse_area %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
+        Almacen
+      </a>
+      {% endif %}
+      {% if modules.edge %}
+      <a href="{% url 'edge:dashboard' %}"
+         class="{% if is_edge_area %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
+        Conectividad
+      </a>
+      {% endif %}
+      {% if modules.eventbus %}
+      <a href="{% url 'eventbus:dashboard' %}"
+         class="{% if is_events_area %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
+        Eventos
+      </a>
+      {% endif %}
+      {% if modules.connect %}
+      <a href="{% url 'connect:dashboard' %}"
+         class="{% if is_connect_area %}kore-nav-active-mobile{% else %}kore-nav-item-mobile{% endif %}">
+        Integraciones
       </a>
       {% endif %}
       {% if modules.sales %}

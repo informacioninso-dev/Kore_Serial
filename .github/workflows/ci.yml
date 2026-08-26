@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: kore_serial
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      SECRET_KEY: ci-secret-key
+      DEBUG: "False"
+      ALLOWED_HOSTS: localhost,127.0.0.1,.localhost,.test.com
+      DB_NAME: kore_serial
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      TENANT_BASE_DOMAIN: localhost
+      # Sin Redis en CI: las tareas periodicas no se ejercitan aqui.
+      REDIS_URL: redis://localhost:6379/0
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Instalar librerias de sistema para WeasyPrint
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            libcairo2 libpango-1.0-0 libpangoft2-1.0-0 libgdk-pixbuf-2.0-0 shared-mime-info
+
+      - name: Instalar dependencias
+        run: |
+          pip install --upgrade pip poetry poetry-plugin-export
+          poetry export --without-hashes --format requirements.txt --output requirements.txt
+          pip install -r requirements.txt
+
+      - name: Revision de configuracion
+        run: python manage.py check
+
+      - name: Migraciones sin generar
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Tests
+        run: python manage.py test --noinput

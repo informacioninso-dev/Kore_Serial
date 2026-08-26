@@ -309,14 +309,14 @@ class WMSTests(TenantTestCase):
 
     def test_wms_lists_preserve_filters_and_permission_boundary(self):
         material = self.create_material(code="FILTER-001", traceability=MaterialTraceability.NONE)
-        response = self.client.get("/bodega/materiales/", {"q": material.code, "traceability": MaterialTraceability.NONE, "per_page": 50})
+        response = self.client.get("/almacen/materiales/", {"q": material.code, "traceability": MaterialTraceability.NONE, "per_page": 50})
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, material.code)
         self.assertContains(response, 'name="per_page" value="50"', html=False)
 
         anonymous = Client(HTTP_HOST=self.get_test_tenant_domain())
-        denied = anonymous.get("/bodega/inventario/")
+        denied = anonymous.get("/almacen/inventario/")
         self.assertEqual(denied.status_code, 302)
 
     def test_kit_picking_moves_material_to_line_without_consuming_it(self):
